@@ -1,0 +1,77 @@
+# TZ
+_TZ
+
+# Secrets
+secrets
+.service_key
+
+# plans
+plans
+
+# logs
+logs
+
+bin/
+dist/
+
+Dockerfile.bak
+
+# Test binary, built with go test -c
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment variables and secrets
+cfg.env
+*.env
+config.yaml
+secrets.yaml
+.service_key
+
+# Debug and log files
+*.log
+logs/
+debug
+
+# Build output
+build/
+
+# Database files
+*.db
+*.sqlite
+
+# Generated files
+gen/
+generated/
+
+# Temporary files
+tmp/
+temp/
+
+# Air temporary files
+.air.conf
+/tmp
+
+# Certificate files
+*.pem
+*.key
+*.crt
+
+# GoLand IDE related files
+*.iml
+out/

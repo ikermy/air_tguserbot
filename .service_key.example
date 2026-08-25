@@ -1,0 +1,10 @@
+# Федеральное агентство для получения SERVICE_KEY:
+# 0. SERVICE_KEY генерируется air_orc
+# 1. Должен быть запущен air_front, авторизованный пользователь должен быть dev
+# 2. О пользователе -> dev settings -> service_key -> generate
+# 3. Скопируйте полученный ключ и поместите сюда
+#
+# Пример:
+# your-super-secret-service-key-here-that-is-very-long-and-secure
+
+your-service-key-from-air_orc

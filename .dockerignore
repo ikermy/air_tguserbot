@@ -1,0 +1,27 @@
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Secrets
+secrets
+.service_key
+
+.env
+*.log
+logs/
+node_modules/
+vendor/
+*.tar
+*.tar.gz
+*.rar
+*.zip
+*.7z
+.github/
+.service_key.*
+
+

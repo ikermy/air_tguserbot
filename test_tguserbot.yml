@@ -1,0 +1,49 @@
+services:
+  # ── Нагрузочный тест air_tguserbot ────────────────────────────────────────────
+  tguserbot_loadtest:
+    image: golang:1.25
+    container_name: tguserbot_loadtest
+    working_dir: /workspace
+    environment:
+      RUN_LOAD_TEST: "1"
+      DB_HOST: ${DB_HOST:-host.docker.internal:3306}
+      DB_NAME: ${DB_NAME:-air_test}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      REDIS_ADDR: ${REDIS_ADDR:-air_redis:6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      GRPC_CONFIG_HOST: ${GRPC_CONFIG_HOST:-airorc:50051}
+      REAL_URL: ${REAL_URL:-localhost}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GLOB_USER_MODEL_TTL: ${GLOB_USER_MODEL_TTL:-1440}
+      SERVICE_KEY_FILE: /run/secrets/service.key
+    volumes:
+      - ./:/workspace
+      - ./.service_key:/run/secrets/service.key:ro
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring_shared
+      - air_shared
+    command:
+      - go
+      - test
+      - -tags
+      - loadtest
+      - ./internal/pkg/app
+      - -run
+      - TestApp_UltimateMaxLoad
+      - -v
+
+networks:
+  monitoring_shared:
+    external: true
+  air_shared:
+    external: true
+
+volumes:
+  go-mod-cache:
+  go-build-cache:

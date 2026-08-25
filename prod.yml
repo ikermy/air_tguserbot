@@ -1,0 +1,67 @@
+services:
+  # ── air_tguserbot — Telegram User Bot ───────────────────────────────────────────
+  tguserbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: 2
+    labels:
+      logging: loki
+      app: air
+      service: tguserbot
+      tier: backend
+    image: tguserbot:prod
+    container_name: tguserbot_app
+    restart: unless-stopped
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+
+      # ── База данных (локальный сервер на хосте) ─────────────────────────────
+      - DB_HOST=air_db:3306
+      - DB_NAME=air
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+      # ── Redis (общий для всех сервисов) ─────────────────────────────────────
+      - REDIS_ADDR=air_redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+
+      # ── gRPC конфигурация (для получения UserKey) ───────────────────────────
+      # Указывает адрес ConfigService от AiR_ORCHESTRATOR (в Docker-сети или с хоста)
+      - GRPC_CONFIG_HOST=airorc:50051
+
+      # Путь к файлу с сервисным ключом (примонтирован через volume)
+      - SERVICE_KEY_FILE=/run/secrets/service_key
+
+      # ── Домен и порты смежных сервисов ───────────────────────────────────────
+      - REAL_URL=${DOMAIN}
+
+      # ── Логирование ──────────────────────────────────────────────────────────
+      - LOG_LEVEL=info
+
+      # ── Прочее ───────────────────────────────────────────────────────────────
+      - GLOB_USER_MODEL_TTL=1440
+
+      # ── Путь к библиотеке для звонков (примонтирован через volume) ────────────
+      - NTGCALLS_LIBRARY_PATH=/app/slim_libntgcalls.so
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    networks:
+      - monitoring_shared
+      - air_shared
+
+    volumes:
+      - ./.service_key:/run/secrets/service_key:ro
+
+networks:
+  monitoring_shared:
+    external: true
+  air_shared:
+    external: true

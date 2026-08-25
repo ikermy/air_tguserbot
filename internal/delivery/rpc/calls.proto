@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package calls.v1;
+
+option go_package = "air_tguserbot/internal/delivery/rpc";
+
+service Calls {
+  rpc StartOutgoingCall(StartOutgoingCallRequest) returns (StartOutgoingCallResponse);
+  rpc SubscribeCallEvents(SubscribeCallEventsRequest) returns (stream CallEvent);
+  rpc HangupCall(HangupCallRequest) returns (HangupCallResponse);
+}
+
+enum CallProvider {
+  CALL_PROVIDER_UNSPECIFIED = 0;
+  CALL_PROVIDER_WHATSAPP = 1;
+  CALL_PROVIDER_TELEGRAM = 2;
+}
+
+enum CallEventType {
+  CALL_EVENT_TYPE_UNSPECIFIED = 0;
+  CALL_STARTED = 1;
+  REALTIME_STARTING = 2;
+  REALTIME_STARTED = 3;
+  REALTIME_SUBSCRIBED = 4;
+  AUDIO_BRIDGE_STARTED = 5;
+  CALL_CONNECTED = 6;
+  INPUT_TRANSCRIPT_DELTA = 7;
+  INPUT_TRANSCRIPT_DONE = 8;
+  RESPONSE_STARTED = 9;
+  RESPONSE_TEXT_DELTA = 10;
+  RESPONSE_DONE = 11;
+  ERROR = 12;
+  CALL_ENDED = 13;
+}
+
+message StartOutgoingCallRequest {
+  uint32 user_id = 1;
+  CallProvider provider = 2;
+  string target = 3;
+}
+
+message StartOutgoingCallResponse {
+  string call_id = 1;
+  string status = 2;
+  string ai_provider = 3;
+}
+
+message SubscribeCallEventsRequest {
+  uint32 user_id = 1;
+  string call_id = 2;
+  uint64 after_sequence = 3;
+}
+
+message HangupCallRequest {
+  uint32 user_id = 1;
+  string call_id = 2;
+  string reason = 3;
+}
+
+message HangupCallResponse {
+  string call_id = 1;
+  string status = 2;
+}
+
+message CallEvent {
+  string call_id = 1;
+  uint64 sequence = 2;
+  int64 timestamp_unix_ms = 3;
+  CallProvider provider = 4;
+  CallEventType type = 5;
+  string delta = 6;
+  string text = 7;
+  string response_id = 8;
+  string reason = 9;
+  string error = 10;
+}

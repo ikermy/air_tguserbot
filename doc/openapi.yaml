@@ -1,0 +1,250 @@
+openapi: 3.0.3
+info:
+  title: air_tguser HTTP API
+  description: HTTP API управления Telegram User-ботами. RPC API звонков доступен по gRPC на порту 9090.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: HTTP server
+
+tags:
+  - name: Telegram
+    description: Управление Telegram User-ботом
+  - name: Monitoring
+    description: Мониторинг сервиса
+
+paths:
+  /metrics:
+    get:
+      tags: [Monitoring]
+      summary: Получить Prometheus-метрики
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Метрики Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /tguser/available:
+    get:
+      tags: [Telegram]
+      summary: Проверить доступность Telegram User-бота
+      operationId: checkTelegramUserAvailability
+      responses:
+        '200':
+          description: Сервис доступен
+
+  /tguser/getname:
+    get:
+      tags: [Telegram]
+      summary: Получить имя Telegram User-бота
+      operationId: getTelegramUserBotName
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Имя бота
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bot_name]
+                properties:
+                  bot_name:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+
+  /tguser/enable:
+    get:
+      tags: [Telegram]
+      summary: Запустить Telegram User-бота
+      operationId: enableTelegramUserBot
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotStarted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tguser/disable:
+    get:
+      tags: [Telegram]
+      summary: Остановить Telegram User-бота
+      operationId: disableTelegramUserBot
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          $ref: '#/components/responses/BotStopped'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tguser/restart:
+    get:
+      tags: [Telegram]
+      summary: Перезапустить Telegram User-бота
+      operationId: restartTelegramUserBot
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Бот перезапущен или перезапуск выполняется
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tguser/ws:
+    get:
+      tags: [Telegram]
+      summary: WebSocket авторизации и сообщений Telegram User-бота
+      operationId: telegramUserWebSocket
+      description: 'Требует query-параметр uid и Upgrade: websocket.'
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      x-websocket: true
+      responses:
+        '101':
+          description: WebSocket-соединение установлено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /tguser/contacts/ws:
+    get:
+      tags: [Telegram]
+      summary: Получить контакты через WebSocket
+      operationId: telegramUserContactsWebSocket
+      description: 'Требует query-параметр uid и Upgrade: websocket. Сервер передаёт JSON-сообщения контактов.'
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      x-websocket: true
+      responses:
+        '101':
+          description: WebSocket-соединение установлено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /tguser/call/hangup:
+    post:
+      tags: [Telegram]
+      summary: Завершить активный звонок
+      operationId: hangupCall
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+            maximum: 4294967295
+        - name: callId
+          in: query
+          required: true
+          description: Числовой идентификатор звонка
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Звонок завершён
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Бот или звонок не найден
+
+components:
+  parameters:
+    UserId:
+      name: uid
+      in: query
+      required: true
+      description: ID пользователя, которому принадлежит бот
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+        maximum: 4294967295
+
+  schemas:
+    StatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          examples: [bot started successfully, bot stopped successfully, bot reload in progress]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    BotStarted:
+      description: Бот запущен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StatusResponse'
+    BotStopped:
+      description: Бот остановлен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StatusResponse'
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    MethodNotAllowed:
+      description: HTTP-метод не поддерживается
+    InternalError:
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+x-grpc:
+  server:
+    address: localhost:9090
+    service: calls.v1.Calls
+  methods:
+    StartOutgoingCall:
+      request: StartOutgoingCallRequest
+      response: StartOutgoingCallResponse
+    SubscribeCallEvents:
+      request: SubscribeCallEventsRequest
+      response: CallEvent
+      streaming: server
+    HangupCall:
+      request: HangupCallRequest
+      response: HangupCallResponse
