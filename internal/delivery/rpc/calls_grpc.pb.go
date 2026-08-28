@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v5.29.3
-// source: internal/delivery/rpc/calls.proto
+// source: calls.proto
 
 package rpc
 
@@ -197,5 +197,5 @@ var Calls_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "internal/delivery/rpc/calls.proto",
+	Metadata: "calls.proto",
 }

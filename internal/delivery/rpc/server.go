@@ -2,16 +2,19 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"strings"
 
 	"air_tguserbot/internal/telegram"
 
 	"github.com/ikermy/air-common/pkg/comdom"
+	"github.com/ikermy/air-common/pkg/model"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type CallAPI interface {
@@ -68,9 +71,6 @@ func (s *Server) SubscribeCallEvents(req *SubscribeCallEventsRequest, stream grp
 			if !ok {
 				return nil
 			}
-			if event.Type == "token_usage" {
-				continue
-			}
 			protoEvent := toProtoEvent(req.GetUserId(), event)
 			if err := stream.Send(protoEvent); err != nil {
 				return err
@@ -80,36 +80,42 @@ func (s *Server) SubscribeCallEvents(req *SubscribeCallEventsRequest, stream grp
 }
 
 func toProtoEvent(_ uint32, event telegram.CallEvent) *CallEvent {
-	result := &CallEvent{CallId: event.CallID, Sequence: event.Sequence, TimestampUnixMs: event.Timestamp.UnixMilli(), Provider: CallProvider_CALL_PROVIDER_TELEGRAM, Type: callEventType(event.Type, event.Text, event.Delta), Delta: event.Delta, Text: event.Text, ResponseId: event.ResponseID}
+	result := &CallEvent{CallId: event.CallID, Sequence: event.Sequence, TimestampUnixMs: event.Timestamp.UnixMilli(), Provider: CallProvider_CALL_PROVIDER_TELEGRAM, Delta: event.Delta, Text: event.Text, ResponseId: event.ResponseID, Reason: event.Reason}
+	if event.Type == "call_connected" {
+		result.Type, result.Phase = "call", "connected"
+	} else if event.Type == "call_ended" {
+		result.Type, result.Phase = "call", "ended"
+	} else {
+		normalized := model.NormalizeRealtimeEvent(model.RealtimeEvent{Type: event.Type, Text: event.Text, Delta: event.Delta, ResponseID: event.ResponseID, Err: event.Err})
+		result.Type, result.Role, result.Phase = normalized.Type, normalized.Role, normalized.Phase
+		result.Delta, result.Text, result.ResponseId = normalized.Delta, normalized.Text, normalized.ResponseID
+		if normalized.Error != "" {
+			result.Error = normalized.Error
+		}
+		if normalized.Usage != nil {
+			result.Usage = structValue(normalized.Usage)
+		}
+	}
 	if event.Err != nil {
 		result.Error = event.Err.Error()
 	}
 	return result
 }
 
-func callEventType(eventType, text, delta string) CallEventType {
-	if value, ok := map[string]CallEventType{
-		"call_started":           CallEventType_CALL_STARTED,
-		"realtime_starting":      CallEventType_REALTIME_STARTING,
-		"realtime_started":       CallEventType_REALTIME_STARTED,
-		"realtime_subscribed":    CallEventType_REALTIME_SUBSCRIBED,
-		"audio_bridge_started":   CallEventType_AUDIO_BRIDGE_STARTED,
-		"call_connected":         CallEventType_CALL_CONNECTED,
-		"input_transcript_delta": CallEventType_INPUT_TRANSCRIPT_DELTA,
-		"transcript_delta":       CallEventType_INPUT_TRANSCRIPT_DELTA,
-		"input_transcript_done":  CallEventType_INPUT_TRANSCRIPT_DONE,
-		"transcript":             CallEventType_INPUT_TRANSCRIPT_DONE,
-		"response_started":       CallEventType_RESPONSE_STARTED,
-		"response_text_delta":    CallEventType_RESPONSE_TEXT_DELTA,
-		"response_done":          CallEventType_RESPONSE_DONE,
-		"error":                  CallEventType_ERROR,
-		"call_ended":             CallEventType_CALL_ENDED}[eventType]; ok {
-		return value
+func structValue(value any) *structpb.Struct {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
 	}
-	if text != "" || delta != "" {
-		return CallEventType_RESPONSE_TEXT_DELTA
+	var fields map[string]any
+	if json.Unmarshal(data, &fields) != nil {
+		return nil
 	}
-	return CallEventType_RESPONSE_DONE
+	result, err := structpb.NewStruct(fields)
+	if err != nil {
+		return nil
+	}
+	return result
 }
 
 func (s *Server) HangupCall(_ context.Context, req *HangupCallRequest) (*HangupCallResponse, error) {

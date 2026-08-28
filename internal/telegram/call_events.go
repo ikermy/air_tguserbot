@@ -24,6 +24,7 @@ type CallEvent struct {
 	Delta      string
 	Text       string
 	ResponseID string
+	Reason     string
 	Err        error
 }
 

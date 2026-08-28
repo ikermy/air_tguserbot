@@ -183,7 +183,7 @@ func (u *User) AuthWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			shortCtx, cancel := context.WithTimeout(r.Context(), time.Second*2)
 			defer cancel()
 
-			if mk, err := u.rpc.GetUserMasterKey(shortCtx, userId); err != nil {
+			if mk, err := u.getMasterKey(shortCtx, userId); err != nil {
 				logger.Warn("MasterKey недоступен, сохраняю данные без шифрования: %v", err, userId)
 			} else {
 				encrypted, err := crypto.EncryptFieldWithMasterKey(mk, jsonData)
@@ -198,6 +198,26 @@ func (u *User) AuthWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Error("Ошибка сохранения сессии: %v", err, userId)
 				metrics.ObserveWebSocketEvent("auth", "session_save_error")
+				return
+			}
+
+			// Авторизация завершена и сессия сохранена — сразу регистрируем
+			// Telegram-бота, чтобы последующие RPC-вызовы не получали
+			// "bot not found" до отдельного запроса startBot.
+			var startErr error
+			if _, exists := u.getBot(userId); exists {
+				// При повторной авторизации бот уже может быть зарегистрирован.
+				// Перезапускаем его, чтобы он перечитал новую сессию из БД.
+				startErr = u.RestartUserBot(userId)
+			} else {
+				startErr = u.StartUserBot(userId)
+			}
+			if startErr != nil {
+				logger.Error("Ошибка автоматического запуска бота после авторизации: %v", startErr, userId)
+				metrics.ObserveBotLifecycle(userId, "auth_start", "error")
+			} else {
+				logger.Info("Telegram-бот автоматически запущен после авторизации", userId)
+				metrics.ObserveBotLifecycle(userId, "auth_start", "success")
 			}
 		}
 		metrics.ObserveWebSocketEvent("auth", "auth_success")

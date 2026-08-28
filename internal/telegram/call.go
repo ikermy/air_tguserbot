@@ -356,7 +356,7 @@ connWait:
 		b.discardCallSession(cs)
 		return
 	}
-	if err := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); err != nil {
+	if err := b.startRealtimeSession(cs, rt); err != nil {
 		b.handleCallError(cs, "StartRealtimeSession", err)
 		return
 	}
@@ -368,6 +368,32 @@ connWait:
 	<-cs.ctx.Done()
 	logger.Debug("P2P звонок callID=%d завершён", cs.callID, b.userID)
 	b.cleanupCall(cs)
+}
+
+// startRealtimeSession проверяет, что модель/канал для звонка ещё существуют.
+// После перезапуска Telegram-бота Router может не иметь in-memory channel,
+// хотя авторизованная Telegram-сессия и dialog уже сохранены.
+func (b *Bot) startRealtimeSession(cs *callSession, rt model.RealtimeProvider) error {
+	if _, err := b.mod.GetCh(cs.respId); err != nil {
+		logger.Warn("Realtime-канал не найден для respId=%d, переинициализируем: %v", cs.respId, err, b.userID)
+		initSession, initErr := b.initializeUserSession(int64(cs.callerID), strconv.FormatInt(cs.callerID, 10))
+		if initErr != nil {
+			return fmt.Errorf("realtime channel is unavailable: %w", initErr)
+		}
+		cs.dialogID = initSession.dialogID
+	}
+	if err := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); err != nil {
+		logger.Warn("Realtime-сессия не запущена для respId=%d, повторно инициализируем канал: %v", cs.respId, err, b.userID)
+		initSession, initErr := b.initializeUserSession(int64(cs.callerID), strconv.FormatInt(cs.callerID, 10))
+		if initErr != nil {
+			return fmt.Errorf("realtime retry initialization failed: %w", initErr)
+		}
+		cs.dialogID = initSession.dialogID
+		if retryErr := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); retryErr != nil {
+			return retryErr
+		}
+	}
+	return nil
 }
 
 // getRealtimeProvider возвращает RealtimeProvider из модели (прямо или через ModelRouter).
@@ -614,6 +640,9 @@ func (b *Bot) handleRealtimeEvents(cs *callSession, eventCh <-chan model.Realtim
 			if !ok {
 				return
 			}
+			if ev.Err != nil {
+				logger.Error("Realtime provider error: type=%s responseID=%s: %v", ev.Type, ev.ResponseID, ev.Err, b.userID)
+			}
 			delta, responseID := realtimeEventFields(ev)
 			text := ev.Text
 			if ev.Type == "response_text_delta" || ev.Type == "input_transcript_delta" || ev.Type == "transcript_delta" {
@@ -693,7 +722,7 @@ func (b *Bot) discardCallSession(cs *callSession) {
 func (b *Bot) cleanupCall(cs *callSession) {
 	cs.cleanupOnce.Do(func() {
 		if cs.eventHub != nil {
-			cs.eventHub.publish(CallEvent{CallID: fmt.Sprintf("%d", cs.callID), Type: "call_ended"})
+			cs.eventHub.publish(CallEvent{CallID: fmt.Sprintf("%d", cs.callID), Type: "call_ended", Reason: "remote_hangup"})
 		}
 		atomic.StoreInt32(&cs.cleanedUp, 1)
 
@@ -774,15 +803,19 @@ func (b *Bot) handlePhoneCallUpdate(phoneCall *tg.PhoneCall) {
 
 // handlePhoneCallAcceptedUpdate обрабатывает принятие исходящего звонка callee (содержит GB).
 func (b *Bot) handlePhoneCallAcceptedUpdate(phoneCall *tg.PhoneCallAccepted) {
+	logger.Debug("handlePhoneCallAcceptedUpdate: callID=%d GB_len=%d", phoneCall.ID, len(phoneCall.GB), b.userID)
 	val, ok := b.activeCalls.Load(phoneCall.ID)
 	if !ok {
 		logger.Warn("handlePhoneCallAcceptedUpdate: нет активной сессии для callID=%d", phoneCall.ID, b.userID)
 		return
 	}
 	cs := val.(*callSession)
+	logger.Debug("handlePhoneCallAcceptedUpdate: сессия найдена callID=%d callerID=%d", cs.callID, cs.callerID, b.userID)
 	select {
 	case cs.phoneCallAcceptedCh <- phoneCall:
+		logger.Debug("handlePhoneCallAcceptedUpdate: событие передано в канал callID=%d", phoneCall.ID, b.userID)
 	case <-cs.ctx.Done():
+		logger.Debug("handlePhoneCallAcceptedUpdate: сессия завершена callID=%d", phoneCall.ID, b.userID)
 		return
 	default:
 		logger.Error("handlePhoneCallAcceptedUpdate: phoneCallAcceptedCh переполнен callID=%d", phoneCall.ID, b.userID)

@@ -41,7 +41,7 @@ func TestSubscribeCallEventsForwardsRealtimeEvent(t *testing.T) {
 	if err := s.SubscribeCallEvents(&SubscribeCallEventsRequest{UserId: 1, CallId: "123"}, stream); err != nil {
 		t.Fatal(err)
 	}
-	if len(stream.events) != 1 || stream.events[0].GetText() != "готово" {
+	if len(stream.events) != 1 || stream.events[0].GetType() != "response" || stream.events[0].GetPhase() != "done" {
 		t.Fatalf("events = %#v", stream.events)
 	}
 	if stream.events[0].GetProvider() != CallProvider_CALL_PROVIDER_TELEGRAM {

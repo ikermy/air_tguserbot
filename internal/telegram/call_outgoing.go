@@ -404,7 +404,7 @@ connWait:
 		b.discardCallSession(cs)
 		return
 	}
-	if err := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); err != nil {
+	if err := b.startRealtimeSession(cs, rt); err != nil {
 		b.handleCallError(cs, "setupOutgoingP2PCall: StartRealtimeSession", err)
 		return
 	}

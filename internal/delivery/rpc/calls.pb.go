@@ -2,13 +2,14 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v5.29.3
-// source: internal/delivery/rpc/calls.proto
+// source: calls.proto
 
 package rpc
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -54,11 +55,11 @@ func (x CallProvider) String() string {
 }
 
 func (CallProvider) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_delivery_rpc_calls_proto_enumTypes[0].Descriptor()
+	return file_calls_proto_enumTypes[0].Descriptor()
 }
 
 func (CallProvider) Type() protoreflect.EnumType {
-	return &file_internal_delivery_rpc_calls_proto_enumTypes[0]
+	return &file_calls_proto_enumTypes[0]
 }
 
 func (x CallProvider) Number() protoreflect.EnumNumber {
@@ -67,89 +68,7 @@ func (x CallProvider) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CallProvider.Descriptor instead.
 func (CallProvider) EnumDescriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{0}
-}
-
-type CallEventType int32
-
-const (
-	CallEventType_CALL_EVENT_TYPE_UNSPECIFIED CallEventType = 0
-	CallEventType_CALL_STARTED                CallEventType = 1
-	CallEventType_REALTIME_STARTING           CallEventType = 2
-	CallEventType_REALTIME_STARTED            CallEventType = 3
-	CallEventType_REALTIME_SUBSCRIBED         CallEventType = 4
-	CallEventType_AUDIO_BRIDGE_STARTED        CallEventType = 5
-	CallEventType_CALL_CONNECTED              CallEventType = 6
-	CallEventType_INPUT_TRANSCRIPT_DELTA      CallEventType = 7
-	CallEventType_INPUT_TRANSCRIPT_DONE       CallEventType = 8
-	CallEventType_RESPONSE_STARTED            CallEventType = 9
-	CallEventType_RESPONSE_TEXT_DELTA         CallEventType = 10
-	CallEventType_RESPONSE_DONE               CallEventType = 11
-	CallEventType_ERROR                       CallEventType = 12
-	CallEventType_CALL_ENDED                  CallEventType = 13
-)
-
-// Enum value maps for CallEventType.
-var (
-	CallEventType_name = map[int32]string{
-		0:  "CALL_EVENT_TYPE_UNSPECIFIED",
-		1:  "CALL_STARTED",
-		2:  "REALTIME_STARTING",
-		3:  "REALTIME_STARTED",
-		4:  "REALTIME_SUBSCRIBED",
-		5:  "AUDIO_BRIDGE_STARTED",
-		6:  "CALL_CONNECTED",
-		7:  "INPUT_TRANSCRIPT_DELTA",
-		8:  "INPUT_TRANSCRIPT_DONE",
-		9:  "RESPONSE_STARTED",
-		10: "RESPONSE_TEXT_DELTA",
-		11: "RESPONSE_DONE",
-		12: "ERROR",
-		13: "CALL_ENDED",
-	}
-	CallEventType_value = map[string]int32{
-		"CALL_EVENT_TYPE_UNSPECIFIED": 0,
-		"CALL_STARTED":                1,
-		"REALTIME_STARTING":           2,
-		"REALTIME_STARTED":            3,
-		"REALTIME_SUBSCRIBED":         4,
-		"AUDIO_BRIDGE_STARTED":        5,
-		"CALL_CONNECTED":              6,
-		"INPUT_TRANSCRIPT_DELTA":      7,
-		"INPUT_TRANSCRIPT_DONE":       8,
-		"RESPONSE_STARTED":            9,
-		"RESPONSE_TEXT_DELTA":         10,
-		"RESPONSE_DONE":               11,
-		"ERROR":                       12,
-		"CALL_ENDED":                  13,
-	}
-)
-
-func (x CallEventType) Enum() *CallEventType {
-	p := new(CallEventType)
-	*p = x
-	return p
-}
-
-func (x CallEventType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (CallEventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_delivery_rpc_calls_proto_enumTypes[1].Descriptor()
-}
-
-func (CallEventType) Type() protoreflect.EnumType {
-	return &file_internal_delivery_rpc_calls_proto_enumTypes[1]
-}
-
-func (x CallEventType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use CallEventType.Descriptor instead.
-func (CallEventType) EnumDescriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{1}
+	return file_calls_proto_rawDescGZIP(), []int{0}
 }
 
 type StartOutgoingCallRequest struct {
@@ -163,7 +82,7 @@ type StartOutgoingCallRequest struct {
 
 func (x *StartOutgoingCallRequest) Reset() {
 	*x = StartOutgoingCallRequest{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[0]
+	mi := &file_calls_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -175,7 +94,7 @@ func (x *StartOutgoingCallRequest) String() string {
 func (*StartOutgoingCallRequest) ProtoMessage() {}
 
 func (x *StartOutgoingCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[0]
+	mi := &file_calls_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -188,7 +107,7 @@ func (x *StartOutgoingCallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartOutgoingCallRequest.ProtoReflect.Descriptor instead.
 func (*StartOutgoingCallRequest) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{0}
+	return file_calls_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *StartOutgoingCallRequest) GetUserId() uint32 {
@@ -223,7 +142,7 @@ type StartOutgoingCallResponse struct {
 
 func (x *StartOutgoingCallResponse) Reset() {
 	*x = StartOutgoingCallResponse{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[1]
+	mi := &file_calls_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -235,7 +154,7 @@ func (x *StartOutgoingCallResponse) String() string {
 func (*StartOutgoingCallResponse) ProtoMessage() {}
 
 func (x *StartOutgoingCallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[1]
+	mi := &file_calls_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -248,7 +167,7 @@ func (x *StartOutgoingCallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartOutgoingCallResponse.ProtoReflect.Descriptor instead.
 func (*StartOutgoingCallResponse) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{1}
+	return file_calls_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StartOutgoingCallResponse) GetCallId() string {
@@ -283,7 +202,7 @@ type SubscribeCallEventsRequest struct {
 
 func (x *SubscribeCallEventsRequest) Reset() {
 	*x = SubscribeCallEventsRequest{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[2]
+	mi := &file_calls_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -295,7 +214,7 @@ func (x *SubscribeCallEventsRequest) String() string {
 func (*SubscribeCallEventsRequest) ProtoMessage() {}
 
 func (x *SubscribeCallEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[2]
+	mi := &file_calls_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -308,7 +227,7 @@ func (x *SubscribeCallEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeCallEventsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeCallEventsRequest) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{2}
+	return file_calls_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SubscribeCallEventsRequest) GetUserId() uint32 {
@@ -343,7 +262,7 @@ type HangupCallRequest struct {
 
 func (x *HangupCallRequest) Reset() {
 	*x = HangupCallRequest{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[3]
+	mi := &file_calls_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -355,7 +274,7 @@ func (x *HangupCallRequest) String() string {
 func (*HangupCallRequest) ProtoMessage() {}
 
 func (x *HangupCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[3]
+	mi := &file_calls_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -368,7 +287,7 @@ func (x *HangupCallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HangupCallRequest.ProtoReflect.Descriptor instead.
 func (*HangupCallRequest) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{3}
+	return file_calls_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *HangupCallRequest) GetUserId() uint32 {
@@ -402,7 +321,7 @@ type HangupCallResponse struct {
 
 func (x *HangupCallResponse) Reset() {
 	*x = HangupCallResponse{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[4]
+	mi := &file_calls_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +333,7 @@ func (x *HangupCallResponse) String() string {
 func (*HangupCallResponse) ProtoMessage() {}
 
 func (x *HangupCallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[4]
+	mi := &file_calls_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,7 +346,7 @@ func (x *HangupCallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HangupCallResponse.ProtoReflect.Descriptor instead.
 func (*HangupCallResponse) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{4}
+	return file_calls_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *HangupCallResponse) GetCallId() string {
@@ -450,19 +369,24 @@ type CallEvent struct {
 	Sequence        uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	TimestampUnixMs int64                  `protobuf:"varint,3,opt,name=timestamp_unix_ms,json=timestampUnixMs,proto3" json:"timestamp_unix_ms,omitempty"`
 	Provider        CallProvider           `protobuf:"varint,4,opt,name=provider,proto3,enum=calls.v1.CallProvider" json:"provider,omitempty"`
-	Type            CallEventType          `protobuf:"varint,5,opt,name=type,proto3,enum=calls.v1.CallEventType" json:"type,omitempty"`
+	Type            string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
 	Delta           string                 `protobuf:"bytes,6,opt,name=delta,proto3" json:"delta,omitempty"`
 	Text            string                 `protobuf:"bytes,7,opt,name=text,proto3" json:"text,omitempty"`
 	ResponseId      string                 `protobuf:"bytes,8,opt,name=response_id,json=responseId,proto3" json:"response_id,omitempty"`
 	Reason          string                 `protobuf:"bytes,9,opt,name=reason,proto3" json:"reason,omitempty"`
 	Error           string                 `protobuf:"bytes,10,opt,name=error,proto3" json:"error,omitempty"`
+	Role            string                 `protobuf:"bytes,11,opt,name=role,proto3" json:"role,omitempty"`
+	Phase           string                 `protobuf:"bytes,12,opt,name=phase,proto3" json:"phase,omitempty"`
+	Usage           *structpb.Struct       `protobuf:"bytes,13,opt,name=usage,proto3" json:"usage,omitempty"`
+	Files           []*CallFile            `protobuf:"bytes,14,rep,name=files,proto3" json:"files,omitempty"`
+	Payload         *structpb.Struct       `protobuf:"bytes,15,opt,name=payload,proto3" json:"payload,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CallEvent) Reset() {
 	*x = CallEvent{}
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[5]
+	mi := &file_calls_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +398,7 @@ func (x *CallEvent) String() string {
 func (*CallEvent) ProtoMessage() {}
 
 func (x *CallEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_delivery_rpc_calls_proto_msgTypes[5]
+	mi := &file_calls_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +411,7 @@ func (x *CallEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallEvent.ProtoReflect.Descriptor instead.
 func (*CallEvent) Descriptor() ([]byte, []int) {
-	return file_internal_delivery_rpc_calls_proto_rawDescGZIP(), []int{5}
+	return file_calls_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CallEvent) GetCallId() string {
@@ -518,11 +442,11 @@ func (x *CallEvent) GetProvider() CallProvider {
 	return CallProvider_CALL_PROVIDER_UNSPECIFIED
 }
 
-func (x *CallEvent) GetType() CallEventType {
+func (x *CallEvent) GetType() string {
 	if x != nil {
 		return x.Type
 	}
-	return CallEventType_CALL_EVENT_TYPE_UNSPECIFIED
+	return ""
 }
 
 func (x *CallEvent) GetDelta() string {
@@ -560,11 +484,114 @@ func (x *CallEvent) GetError() string {
 	return ""
 }
 
-var File_internal_delivery_rpc_calls_proto protoreflect.FileDescriptor
+func (x *CallEvent) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
 
-const file_internal_delivery_rpc_calls_proto_rawDesc = "" +
+func (x *CallEvent) GetPhase() string {
+	if x != nil {
+		return x.Phase
+	}
+	return ""
+}
+
+func (x *CallEvent) GetUsage() *structpb.Struct {
+	if x != nil {
+		return x.Usage
+	}
+	return nil
+}
+
+func (x *CallEvent) GetFiles() []*CallFile {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+func (x *CallEvent) GetPayload() *structpb.Struct {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+type CallFile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	FileName      string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	Caption       string                 `protobuf:"bytes,4,opt,name=caption,proto3" json:"caption,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallFile) Reset() {
+	*x = CallFile{}
+	mi := &file_calls_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallFile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallFile) ProtoMessage() {}
+
+func (x *CallFile) ProtoReflect() protoreflect.Message {
+	mi := &file_calls_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallFile.ProtoReflect.Descriptor instead.
+func (*CallFile) Descriptor() ([]byte, []int) {
+	return file_calls_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CallFile) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CallFile) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *CallFile) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *CallFile) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
+var File_calls_proto protoreflect.FileDescriptor
+
+const file_calls_proto_rawDesc = "" +
 	"\n" +
-	"!internal/delivery/rpc/calls.proto\x12\bcalls.v1\"\x7f\n" +
+	"\vcalls.proto\x12\bcalls.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x7f\n" +
 	"\x18StartOutgoingCallRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\rR\x06userId\x122\n" +
 	"\bprovider\x18\x02 \x01(\x0e2\x16.calls.v1.CallProviderR\bprovider\x12\x16\n" +
@@ -584,41 +611,34 @@ const file_internal_delivery_rpc_calls_proto_rawDesc = "" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"E\n" +
 	"\x12HangupCallResponse\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"\xc6\x02\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\xe3\x03\n" +
 	"\tCallEvent\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12*\n" +
 	"\x11timestamp_unix_ms\x18\x03 \x01(\x03R\x0ftimestampUnixMs\x122\n" +
-	"\bprovider\x18\x04 \x01(\x0e2\x16.calls.v1.CallProviderR\bprovider\x12+\n" +
-	"\x04type\x18\x05 \x01(\x0e2\x17.calls.v1.CallEventTypeR\x04type\x12\x14\n" +
+	"\bprovider\x18\x04 \x01(\x0e2\x16.calls.v1.CallProviderR\bprovider\x12\x12\n" +
+	"\x04type\x18\x05 \x01(\tR\x04type\x12\x14\n" +
 	"\x05delta\x18\x06 \x01(\tR\x05delta\x12\x12\n" +
 	"\x04text\x18\a \x01(\tR\x04text\x12\x1f\n" +
 	"\vresponse_id\x18\b \x01(\tR\n" +
 	"responseId\x12\x16\n" +
 	"\x06reason\x18\t \x01(\tR\x06reason\x12\x14\n" +
 	"\x05error\x18\n" +
-	" \x01(\tR\x05error*e\n" +
+	" \x01(\tR\x05error\x12\x12\n" +
+	"\x04role\x18\v \x01(\tR\x04role\x12\x14\n" +
+	"\x05phase\x18\f \x01(\tR\x05phase\x12-\n" +
+	"\x05usage\x18\r \x01(\v2\x17.google.protobuf.StructR\x05usage\x12(\n" +
+	"\x05files\x18\x0e \x03(\v2\x12.calls.v1.CallFileR\x05files\x121\n" +
+	"\apayload\x18\x0f \x01(\v2\x17.google.protobuf.StructR\apayload\"g\n" +
+	"\bCallFile\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12\x1b\n" +
+	"\tfile_name\x18\x03 \x01(\tR\bfileName\x12\x18\n" +
+	"\acaption\x18\x04 \x01(\tR\acaption*e\n" +
 	"\fCallProvider\x12\x1d\n" +
 	"\x19CALL_PROVIDER_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16CALL_PROVIDER_WHATSAPP\x10\x01\x12\x1a\n" +
-	"\x16CALL_PROVIDER_TELEGRAM\x10\x02*\xca\x02\n" +
-	"\rCallEventType\x12\x1f\n" +
-	"\x1bCALL_EVENT_TYPE_UNSPECIFIED\x10\x00\x12\x10\n" +
-	"\fCALL_STARTED\x10\x01\x12\x15\n" +
-	"\x11REALTIME_STARTING\x10\x02\x12\x14\n" +
-	"\x10REALTIME_STARTED\x10\x03\x12\x17\n" +
-	"\x13REALTIME_SUBSCRIBED\x10\x04\x12\x18\n" +
-	"\x14AUDIO_BRIDGE_STARTED\x10\x05\x12\x12\n" +
-	"\x0eCALL_CONNECTED\x10\x06\x12\x1a\n" +
-	"\x16INPUT_TRANSCRIPT_DELTA\x10\a\x12\x19\n" +
-	"\x15INPUT_TRANSCRIPT_DONE\x10\b\x12\x14\n" +
-	"\x10RESPONSE_STARTED\x10\t\x12\x17\n" +
-	"\x13RESPONSE_TEXT_DELTA\x10\n" +
-	"\x12\x11\n" +
-	"\rRESPONSE_DONE\x10\v\x12\t\n" +
-	"\x05ERROR\x10\f\x12\x0e\n" +
-	"\n" +
-	"CALL_ENDED\x10\r2\x82\x02\n" +
+	"\x16CALL_PROVIDER_TELEGRAM\x10\x022\x82\x02\n" +
 	"\x05Calls\x12\\\n" +
 	"\x11StartOutgoingCall\x12\".calls.v1.StartOutgoingCallRequest\x1a#.calls.v1.StartOutgoingCallResponse\x12R\n" +
 	"\x13SubscribeCallEvents\x12$.calls.v1.SubscribeCallEventsRequest\x1a\x13.calls.v1.CallEvent0\x01\x12G\n" +
@@ -626,67 +646,70 @@ const file_internal_delivery_rpc_calls_proto_rawDesc = "" +
 	"HangupCall\x12\x1b.calls.v1.HangupCallRequest\x1a\x1c.calls.v1.HangupCallResponseB%Z#air_tguserbot/internal/delivery/rpcb\x06proto3"
 
 var (
-	file_internal_delivery_rpc_calls_proto_rawDescOnce sync.Once
-	file_internal_delivery_rpc_calls_proto_rawDescData []byte
+	file_calls_proto_rawDescOnce sync.Once
+	file_calls_proto_rawDescData []byte
 )
 
-func file_internal_delivery_rpc_calls_proto_rawDescGZIP() []byte {
-	file_internal_delivery_rpc_calls_proto_rawDescOnce.Do(func() {
-		file_internal_delivery_rpc_calls_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_delivery_rpc_calls_proto_rawDesc), len(file_internal_delivery_rpc_calls_proto_rawDesc)))
+func file_calls_proto_rawDescGZIP() []byte {
+	file_calls_proto_rawDescOnce.Do(func() {
+		file_calls_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_calls_proto_rawDesc), len(file_calls_proto_rawDesc)))
 	})
-	return file_internal_delivery_rpc_calls_proto_rawDescData
+	return file_calls_proto_rawDescData
 }
 
-var file_internal_delivery_rpc_calls_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_internal_delivery_rpc_calls_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_internal_delivery_rpc_calls_proto_goTypes = []any{
+var file_calls_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_calls_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_calls_proto_goTypes = []any{
 	(CallProvider)(0),                  // 0: calls.v1.CallProvider
-	(CallEventType)(0),                 // 1: calls.v1.CallEventType
-	(*StartOutgoingCallRequest)(nil),   // 2: calls.v1.StartOutgoingCallRequest
-	(*StartOutgoingCallResponse)(nil),  // 3: calls.v1.StartOutgoingCallResponse
-	(*SubscribeCallEventsRequest)(nil), // 4: calls.v1.SubscribeCallEventsRequest
-	(*HangupCallRequest)(nil),          // 5: calls.v1.HangupCallRequest
-	(*HangupCallResponse)(nil),         // 6: calls.v1.HangupCallResponse
-	(*CallEvent)(nil),                  // 7: calls.v1.CallEvent
+	(*StartOutgoingCallRequest)(nil),   // 1: calls.v1.StartOutgoingCallRequest
+	(*StartOutgoingCallResponse)(nil),  // 2: calls.v1.StartOutgoingCallResponse
+	(*SubscribeCallEventsRequest)(nil), // 3: calls.v1.SubscribeCallEventsRequest
+	(*HangupCallRequest)(nil),          // 4: calls.v1.HangupCallRequest
+	(*HangupCallResponse)(nil),         // 5: calls.v1.HangupCallResponse
+	(*CallEvent)(nil),                  // 6: calls.v1.CallEvent
+	(*CallFile)(nil),                   // 7: calls.v1.CallFile
+	(*structpb.Struct)(nil),            // 8: google.protobuf.Struct
 }
-var file_internal_delivery_rpc_calls_proto_depIdxs = []int32{
+var file_calls_proto_depIdxs = []int32{
 	0, // 0: calls.v1.StartOutgoingCallRequest.provider:type_name -> calls.v1.CallProvider
 	0, // 1: calls.v1.CallEvent.provider:type_name -> calls.v1.CallProvider
-	1, // 2: calls.v1.CallEvent.type:type_name -> calls.v1.CallEventType
-	2, // 3: calls.v1.Calls.StartOutgoingCall:input_type -> calls.v1.StartOutgoingCallRequest
-	4, // 4: calls.v1.Calls.SubscribeCallEvents:input_type -> calls.v1.SubscribeCallEventsRequest
-	5, // 5: calls.v1.Calls.HangupCall:input_type -> calls.v1.HangupCallRequest
-	3, // 6: calls.v1.Calls.StartOutgoingCall:output_type -> calls.v1.StartOutgoingCallResponse
-	7, // 7: calls.v1.Calls.SubscribeCallEvents:output_type -> calls.v1.CallEvent
-	6, // 8: calls.v1.Calls.HangupCall:output_type -> calls.v1.HangupCallResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	8, // 2: calls.v1.CallEvent.usage:type_name -> google.protobuf.Struct
+	7, // 3: calls.v1.CallEvent.files:type_name -> calls.v1.CallFile
+	8, // 4: calls.v1.CallEvent.payload:type_name -> google.protobuf.Struct
+	1, // 5: calls.v1.Calls.StartOutgoingCall:input_type -> calls.v1.StartOutgoingCallRequest
+	3, // 6: calls.v1.Calls.SubscribeCallEvents:input_type -> calls.v1.SubscribeCallEventsRequest
+	4, // 7: calls.v1.Calls.HangupCall:input_type -> calls.v1.HangupCallRequest
+	2, // 8: calls.v1.Calls.StartOutgoingCall:output_type -> calls.v1.StartOutgoingCallResponse
+	6, // 9: calls.v1.Calls.SubscribeCallEvents:output_type -> calls.v1.CallEvent
+	5, // 10: calls.v1.Calls.HangupCall:output_type -> calls.v1.HangupCallResponse
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_internal_delivery_rpc_calls_proto_init() }
-func file_internal_delivery_rpc_calls_proto_init() {
-	if File_internal_delivery_rpc_calls_proto != nil {
+func init() { file_calls_proto_init() }
+func file_calls_proto_init() {
+	if File_calls_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_delivery_rpc_calls_proto_rawDesc), len(file_internal_delivery_rpc_calls_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   6,
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_calls_proto_rawDesc), len(file_calls_proto_rawDesc)),
+			NumEnums:      1,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_internal_delivery_rpc_calls_proto_goTypes,
-		DependencyIndexes: file_internal_delivery_rpc_calls_proto_depIdxs,
-		EnumInfos:         file_internal_delivery_rpc_calls_proto_enumTypes,
-		MessageInfos:      file_internal_delivery_rpc_calls_proto_msgTypes,
+		GoTypes:           file_calls_proto_goTypes,
+		DependencyIndexes: file_calls_proto_depIdxs,
+		EnumInfos:         file_calls_proto_enumTypes,
+		MessageInfos:      file_calls_proto_msgTypes,
 	}.Build()
-	File_internal_delivery_rpc_calls_proto = out.File
-	file_internal_delivery_rpc_calls_proto_goTypes = nil
-	file_internal_delivery_rpc_calls_proto_depIdxs = nil
+	File_calls_proto = out.File
+	file_calls_proto_goTypes = nil
+	file_calls_proto_depIdxs = nil
 }

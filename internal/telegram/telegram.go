@@ -145,9 +145,36 @@ type User struct {
 	bot         sync.Map // key: uint32 (userID), value: *Bot
 	op          Operator
 	rpc         ORCClient
+	masterKeyMu sync.Mutex
+	masterKey   [32]byte
+	masterKeyAt time.Time
 	redisCache  CacheMethods
 	StartCh     chan model.StartCh   // Канал для запуска горутины слушателя
 	httpServer  *deliveryhttp.Server // HTTP-сервер (для корректного shutdown)
+}
+
+func (u *User) getMasterKey(ctx context.Context, userID uint32) ([32]byte, error) {
+	u.masterKeyMu.Lock()
+	if time.Since(u.masterKeyAt) < 5*time.Minute {
+		key := u.masterKey
+		u.masterKeyMu.Unlock()
+		return key, nil
+	}
+	u.masterKeyMu.Unlock()
+	key, err := u.rpc.GetUserMasterKey(ctx, userID)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	u.masterKeyMu.Lock()
+	u.masterKey, u.masterKeyAt = key, time.Now()
+	u.masterKeyMu.Unlock()
+	return key, nil
+}
+
+func (u *User) invalidateMasterKey() {
+	u.masterKeyMu.Lock()
+	u.masterKeyAt = time.Time{}
+	u.masterKeyMu.Unlock()
 }
 
 // New создает новый экземпляр аутентификатора для Telegram
@@ -1405,17 +1432,28 @@ func (b *Bot) registerMessageHandler() tg.UpdateDispatcher {
 	if mode.IsVoiceCallModeEnabled() && b.voiceCall {
 		logger.Debug("Регистрируем обработчик входящих P2P звонков", b.userID)
 		dispatcher.OnPhoneCall(func(ctx context.Context, e tg.Entities, update *tg.UpdatePhoneCall) error {
+			if update == nil || update.PhoneCall == nil {
+				logger.Debug("PhoneCall update пустой", b.userID)
+				return nil
+			}
+			logger.Debug("PhoneCall update получен: type=%T", update.PhoneCall, b.userID)
 			switch c := update.PhoneCall.(type) {
 			case *tg.PhoneCallRequested:
+				logger.Debug("PhoneCallRequested: callID=%d adminID=%d", c.ID, c.AdminID, b.userID)
 				go b.handleIncomingCall(b.ctx, c)
 			case *tg.PhoneCallAccepted:
+				logger.Debug("PhoneCallAccepted: callID=%d GB_len=%d", c.ID, len(c.GB), b.userID)
 				// Callee принял наш исходящий звонок — содержит GB для DH
 				go b.handlePhoneCallAcceptedUpdate(c)
 			case *tg.PhoneCall:
+				logger.Debug("PhoneCall update: callID=%d connections=%d", c.ID, len(c.Connections), b.userID)
 				// Caller подтвердил звонок — передаём в активную сессию
 				go b.handlePhoneCallUpdate(c)
 			case *tg.PhoneCallDiscarded:
+				logger.Debug("PhoneCallDiscarded: callID=%d", c.ID, b.userID)
 				go b.hangupCall(c.ID)
+			default:
+				logger.Debug("Неизвестный тип PhoneCall update: %T", c, b.userID)
 			}
 			return nil
 		})
@@ -1602,6 +1640,8 @@ func (b *Bot) handleNewMessage(e tg.Entities, update *tg.UpdateNewMessage) error
 			default:
 				logger.Debug("Служебное сообщение Telegram (тип=%T)", svc.Action, b.assist.UserID)
 			}
+			metrics.ObserveMessageIgnored(b.userID, "service_message")
+			return nil
 		}
 		logger.Debug("Получено сообщение неподдерживаемого типа (не tg.Message)", b.assist.UserID)
 		metrics.ObserveMessageIgnored(b.userID, "unsupported_type")

@@ -38,8 +38,9 @@ func (u *User) parseTgUserBotToken(userId uint32, jsonTOKEN string) (TgUserBotTo
 			return TgUserBotToken{}, fmt.Errorf("пользователь %d: ORC клиент не инициализирован", userId)
 		}
 
-		mk, err := u.rpc.GetUserMasterKey(u.ctx, userId)
+		mk, err := u.getMasterKey(u.ctx, userId)
 		if err != nil {
+			u.invalidateMasterKey()
 			logger.Error("Ошибка получения MasterKey: %v (требуется вход на Landing)", err, userId)
 
 			notifyMsg := com.CarpCh{

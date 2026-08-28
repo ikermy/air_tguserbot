@@ -76,19 +76,20 @@ func New(parent context.Context) *App {
 	if err != nil {
 		logger.Fatal(fmt.Errorf("ошибка создания rpc клиента: %w", err))
 	}
+	cachedMasterKey := newCachedMasterKeyClient(rpcClient)
 
 	e := endpoint.New(ctx, d)
 
 	m := model.NewModelRouter(ctx, d,
 		model.WithDialogSaver(e),
-		model.WithMasterKeyProvider(rpcClient),
+		model.WithMasterKeyProvider(cachedMasterKey),
 		openai.NewAsRouterOption(),
 		mistral.NewAsRouterOption(),
 		google.NewAsRouterOption(),
 	)
 
 	d.SetMasterKeyResolver(func(userId uint32) ([32]byte, bool) {
-		mk, err := rpcClient.GetUserMasterKey(context.Background(), userId)
+		mk, err := cachedMasterKey.GetUserMasterKey(context.Background(), userId)
 		if err != nil {
 			return [32]byte{}, false
 		}
@@ -113,7 +114,7 @@ func New(parent context.Context) *App {
 	}
 
 	cr := crm.New(ctx) // Без альтернативного канала т.к. в пользовательской телеге есть номер телефона
-	t := telegram.New(ctx, d, m, e, cr, rpcClient, redisClient)
+	t := telegram.New(ctx, d, m, e, cr, cachedMasterKey, redisClient)
 	callRPC := internalrpc.NewServer(t, d)
 	o := operator.New(ctx)
 	s := startpoint.New(ctx, m, e, t, o)
