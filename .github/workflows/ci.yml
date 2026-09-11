@@ -19,10 +19,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -36,7 +36,9 @@ jobs:
         run: go build -trimpath -ldflags="-s -w" ./...
 
       - name: Vet
-        run: go vet ./...
+        # unsafeptr disabled: intentional uintptr <-> unsafe.Pointer conversions
+        # across the purego/C FFI boundary (ntgcalls bindings).
+        run: go vet -unsafeptr=false ./...
 
       - name: Run tests
         run: go test ./...
