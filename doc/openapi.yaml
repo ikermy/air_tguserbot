@@ -197,7 +197,7 @@ components:
       properties:
         status:
           type: string
-          examples: [bot started successfully, bot stopped successfully, bot reload in progress]
+          example: [ bot started successfully, bot stopped successfully, bot reload in progress]
 
     ErrorResponse:
       type: object

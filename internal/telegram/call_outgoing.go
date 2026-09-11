@@ -203,6 +203,7 @@ func (b *Bot) InitiateOutgoingCall(target string) {
 		callerID:            targetID,
 		respId:              userSession.UserId,
 		dialogID:            userSession.dialogID,
+		userModel:           userSession.UserModel,
 		ctx:                 callCtx,
 		cancel:              callCancel,
 		signalingIn:         make(chan []byte, 64),
@@ -397,20 +398,14 @@ connWait:
 		}
 	}()
 
-	// ─── Запускаем realtime сессию ────────────────────────────────────────────
-	rt, ok := b.getRealtimeProvider()
-	if !ok {
-		logger.Error("setupOutgoingP2PCall: модель не поддерживает RealtimeProvider", b.userID)
-		b.discardCallSession(cs)
-		return
-	}
-	if err := b.startRealtimeSession(cs, rt); err != nil {
-		b.handleCallError(cs, "setupOutgoingP2PCall: StartRealtimeSession", err)
+	// ─── Запускаем realtime сессию через ядро Start ───────────────────────────
+	if err := b.startRealtimeSession(cs); err != nil {
+		b.handleCallError(cs, "setupOutgoingP2PCall: StartSession", err)
 		return
 	}
 
 	b.setWatchdogCallback(cs)
-	go b.callAudioBridge(cs, rt)
+	go b.callAudioBridge(cs)
 
 	<-cs.ctx.Done()
 	logger.Info("setupOutgoingP2PCall: звонок callID=%d завершён", cs.callID, b.userID)

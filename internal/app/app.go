@@ -33,7 +33,7 @@ type Mod interface {
 }
 
 type Start interface {
-	StarterListener(start model.StartCh, errCh chan<- error)
+	StartSession(start *model.StartCh) <-chan error
 	Shutdown(shutCh chan<- com.LogMsg)
 }
 
@@ -120,6 +120,7 @@ func New(parent context.Context) *App {
 	s := startpoint.New(ctx, m, e, t, o)
 
 	t.SetOperator(o)
+	t.SetStart(s)
 
 	return &App{
 		ctx:     ctx,
@@ -193,28 +194,45 @@ func (a *App) Run() {
 }
 
 func (a *App) Starter() {
-	errCh := make(chan error, 10)
-
-	// Слушаю errCh в отдельной горутине
-	go func() {
-		for err := range errCh {
-			if err != nil {
-				logger.Error("Error in errCh: %v", err)
-			}
-		}
-	}()
-
-	// Простой цикл чтения из канала без избыточного select
 	for start := range a.Telega.GetStartCh() {
-		// Запускаю слушателя с пользовательскими данными
 		go func(startData model.StartCh) {
-			// Вызываем слушателя просто как процедуру, без ожидания результата
-			a.Start.StarterListener(startData, errCh)
-		}(start) // Передаем копию start в горутину
+			// StartSession заполняет startData.Realtime, поэтому нужен указатель
+			// на копию — у каждой горутины она своя.
+			errCh := a.Start.StartSession(&startData)
+			for err := range errCh {
+				if err != nil {
+					logger.Error("Error in errCh: %v", err)
+				}
+			}
+		}(start)
 	}
 
-	logger.Infoln("StartCh closed") // Невозможное сообщение, так как канал не закрывается
+	logger.Infoln("StartCh closed")
 }
+
+//func (a *App) Starter() {
+//	errCh := make(chan error, 10)
+//
+//	// Слушаю errCh в отдельной горутине
+//	go func() {
+//		for err := range errCh {
+//			if err != nil {
+//				logger.Error("Error in errCh: %v", err)
+//			}
+//		}
+//	}()
+//
+//	// Простой цикл чтения из канала без избыточного select
+//	for start := range a.Telega.GetStartCh() {
+//		// Запускаю слушателя с пользовательскими данными
+//		go func(startData model.StartCh) {
+//			// Вызываем слушателя просто как процедуру, без ожидания результата
+//			a.Start.StarterListener(startData, errCh)
+//		}(start) // Передаем копию start в горутину
+//	}
+//
+//	logger.Infoln("StartCh closed") // Невозможное сообщение, так как канал не закрывается
+//}
 
 func uReader(readCh <-chan com.LogMsg) {
 	for info := range readCh {

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gotd/td/tg"
+	"github.com/ikermy/air-common/pkg/comdom"
 	"github.com/ikermy/air-common/pkg/model"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 )
@@ -60,8 +61,11 @@ type callSession struct {
 	callerID   int64
 	respId     uint64
 	dialogID   uint64
+	userModel  *model.RespModel
 	ctx        context.Context
 	cancel     context.CancelFunc
+
+	startCh *model.StartCh // заполняется StartSession; владелец lifecycle — Start
 
 	signalingIn         chan []byte
 	signalingFromPeer   chan []byte // Входящие сигнальные пакеты от peer (буфер до ConnectP2P)
@@ -187,6 +191,7 @@ func (b *Bot) handleIncomingCall(ctx context.Context, call *tg.PhoneCallRequeste
 		callerID:            call.AdminID,
 		respId:              userSession.UserId,
 		dialogID:            userSession.dialogID,
+		userModel:           userSession.UserModel,
 		ctx:                 callCtx,
 		cancel:              callCancel,
 		signalingIn:         make(chan []byte, 64),
@@ -350,50 +355,78 @@ connWait:
 		}
 	}()
 
-	rt, ok := b.getRealtimeProvider()
-	if !ok {
-		logger.Error("модель не поддерживает RealtimeProvider", b.userID)
-		b.discardCallSession(cs)
-		return
-	}
-	if err := b.startRealtimeSession(cs, rt); err != nil {
-		b.handleCallError(cs, "StartRealtimeSession", err)
+	if err := b.startRealtimeSession(cs); err != nil {
+		b.handleCallError(cs, "StartSession", err)
 		return
 	}
 	metrics.ObserveCallLifecycle(b.userID, "incoming", "realtime_session", "success")
 
 	b.setWatchdogCallback(cs)
-	go b.callAudioBridge(cs, rt)
+	go b.callAudioBridge(cs)
 
 	<-cs.ctx.Done()
 	logger.Debug("P2P звонок callID=%d завершён", cs.callID, b.userID)
 	b.cleanupCall(cs)
 }
 
-// startRealtimeSession проверяет, что модель/канал для звонка ещё существуют.
-// После перезапуска Telegram-бота Router может не иметь in-memory channel,
-// хотя авторизованная Telegram-сессия и dialog уже сохранены.
-func (b *Bot) startRealtimeSession(cs *callSession, rt model.RealtimeProvider) error {
+// startRealtimeSession запускает realtime-сессию через ядро Start — единственного
+// владельца её lifecycle. StartSession сам достаёт провайдера из Router и
+// заполняет start.Realtime каналами; после старта rt больше не тянется вручную.
+func (b *Bot) startRealtimeSession(cs *callSession) error {
+	if b.start == nil {
+		return fmt.Errorf("start core is not configured")
+	}
+	if cs.userModel == nil {
+		return fmt.Errorf("realtime user model is not initialized for respId=%d", cs.respId)
+	}
+	// После перезапуска Telegram-бота Router может не иметь in-memory channel,
+	// хотя авторизованная Telegram-сессия и dialog уже сохранены.
 	if _, err := b.mod.GetCh(cs.respId); err != nil {
 		logger.Warn("Realtime-канал не найден для respId=%d, переинициализируем: %v", cs.respId, err, b.userID)
-		initSession, initErr := b.initializeUserSession(int64(cs.callerID), strconv.FormatInt(cs.callerID, 10))
+		initSession, initErr := b.initializeUserSession(cs.callerID, strconv.FormatInt(cs.callerID, 10))
 		if initErr != nil {
 			return fmt.Errorf("realtime channel is unavailable: %w", initErr)
 		}
 		cs.dialogID = initSession.dialogID
+		cs.userModel = initSession.UserModel
 	}
-	if err := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); err != nil {
-		logger.Warn("Realtime-сессия не запущена для respId=%d, повторно инициализируем канал: %v", cs.respId, err, b.userID)
-		initSession, initErr := b.initializeUserSession(int64(cs.callerID), strconv.FormatInt(cs.callerID, 10))
-		if initErr != nil {
-			return fmt.Errorf("realtime retry initialization failed: %w", initErr)
-		}
-		cs.dialogID = initSession.dialogID
-		if retryErr := rt.StartRealtimeSession(b.userID, cs.dialogID, cs.respId); retryErr != nil {
-			return retryErr
-		}
+
+	startCh := &model.StartCh{
+		Ctx:      b.ctx,
+		Channel:  comdom.Telegram,
+		Model:    cs.userModel,
+		ThreadId: cs.dialogID,
+		RespId:   cs.respId,
+		// Realtime != nil — запрос realtime-режима; StartSession заполнит
+		// AudioTx/Drain/Events до возврата.
+		Realtime: &model.RealtimeChannels{},
 	}
+
+	errCh := b.start.StartSession(startCh)
+	if startCh.Realtime == nil || startCh.Realtime.AudioTx == nil {
+		select {
+		case err := <-errCh:
+			if err != nil {
+				return fmt.Errorf("realtime session was not started: %w", err)
+			}
+		default:
+		}
+		return fmt.Errorf("realtime session was not started for respId=%d", cs.respId)
+	}
+	cs.startCh = startCh
+	go b.watchRealtimeErrors(cs, errCh)
 	return nil
+}
+
+// watchRealtimeErrors читает канал ошибок сессии, пока Start не закроет его
+// (при CloseSession или самостоятельном завершении провайдера).
+func (b *Bot) watchRealtimeErrors(cs *callSession, errCh <-chan error) {
+	for err := range errCh {
+		if err == nil {
+			continue
+		}
+		logger.Warn("Realtime-сессия respId=%d: %v", cs.respId, err, b.userID)
+	}
 }
 
 // getRealtimeProvider возвращает RealtimeProvider из модели (прямо или через ModelRouter).
@@ -460,27 +493,27 @@ func (b *Bot) forwardSignaling(cs *callSession) {
 
 // ─── callAudioBridge ─────────────────────────────────────────────────────────
 
-func (b *Bot) callAudioBridge(cs *callSession, rt model.RealtimeProvider) {
+func (b *Bot) callAudioBridge(cs *callSession) {
 	if b.user == nil || b.user.ntgEngine == nil {
 		logger.Error("callAudioBridge: ntgEngine not initialized", b.userID)
 		return
 	}
-	engine := b.user.ntgEngine
-	audioOut, err := rt.GetRealtimeAudio(cs.respId)
-	if err != nil {
-		logger.Error("GetRealtimeAudio: %v", err, b.userID)
+	if cs.startCh == nil || cs.startCh.Realtime == nil {
+		logger.Error("callAudioBridge: realtime-каналы не инициализированы", b.userID)
 		return
 	}
-
-	var drainCh <-chan struct{}
-	if dc, e := rt.GetRealtimeDrain(cs.respId); e == nil {
-		drainCh = dc
+	// Провайдер нужен только для SendRealtimeAudio (входящее аудио не
+	// канализуется ядром). Lifecycle-операции выполняет Start.
+	rt, ok := b.getRealtimeProvider()
+	if !ok {
+		logger.Error("callAudioBridge: модель не поддерживает RealtimeProvider", b.userID)
+		return
 	}
+	engine := b.user.ntgEngine
+	audioOut := cs.startCh.Realtime.AudioTx
+	drainCh := cs.startCh.Realtime.Drain
 
-	if eventCh, err := rt.SubscribeEvents(cs.respId); err != nil {
-		logger.Warn("callAudioBridge: SubscribeEvents: %v respId=%d", err, cs.respId, b.userID)
-	} else {
-		defer rt.UnsubscribeEvents(cs.respId, eventCh)
+	if eventCh := cs.startCh.Realtime.Events; eventCh != nil {
 		go b.handleRealtimeEvents(cs, eventCh)
 	}
 
@@ -707,7 +740,7 @@ func (b *Bot) HangupCall(callID string) error {
 		return fmt.Errorf("активный Telegram-звонок %s не найден", callID)
 	}
 	cs := value.(*callSession)
-	if err := b.discardCall(cs.callID, cs.accessHash, "local_hangup"); err != nil {
+	if err := b.sendDiscardCall(cs.callID, cs.accessHash, "local_hangup"); err != nil {
 		return fmt.Errorf("ошибка завершения Telegram-звонка %s: %w", callID, err)
 	}
 	b.cleanupCall(cs)
@@ -741,10 +774,8 @@ func (b *Bot) cleanupCall(cs *callSession) {
 			}
 		}
 
-		if router, ok := b.mod.(*model.Router); ok {
-			router.DisconnectRealtimeSession(cs.respId)
-		} else if rt, ok := b.mod.(model.RealtimeProvider); ok {
-			rt.CloseRealtimeSession(cs.respId)
+		if b.start != nil {
+			b.start.CloseSession(cs.respId)
 		}
 
 		b.activeCalls.Delete(cs.callID)
@@ -762,7 +793,9 @@ func (b *Bot) cleanupCall(cs *callSession) {
 	})
 }
 
-func (b *Bot) discardCall(callID int64, accessHash int64, reason string) error {
+// sendDiscardCall завершает звонок на стороне Telegram и возвращает ошибку
+// вызывающему, которому важен результат (например, public HangupCall).
+func (b *Bot) sendDiscardCall(callID int64, accessHash int64, reason string) error {
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Second)
 	defer cancel()
 	_, err := b.b.API().PhoneDiscardCall(ctx, &tg.PhoneDiscardCallRequest{
@@ -778,6 +811,12 @@ func (b *Bot) discardCall(callID int64, accessHash int64, reason string) error {
 	}
 	metrics.ObserveCallLifecycle(b.userID, "incoming", "discard", "success")
 	return nil
+}
+
+// discardCall — best-effort завершение звонка: ошибка уже логируется и
+// учитывается в метриках внутри sendDiscardCall, поэтому возврат не нужен.
+func (b *Bot) discardCall(callID int64, accessHash int64, reason string) {
+	_ = b.sendDiscardCall(callID, accessHash, reason)
 }
 
 // ─── handlePhoneCallUpdate ────────────────────────────────────────────────────

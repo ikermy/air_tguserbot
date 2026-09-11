@@ -1,31 +1,59 @@
-﻿name: Deploy AirTGUserBot Production
+name: CD AirTGUserBot Production
 
 on:
   push:
     branches:
       - master
+  workflow_dispatch: {}
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/air_tguserbot
 
 jobs:
-  release-and-build:
+  test:
     runs-on: ubuntu-latest
+    name: Setup, test, and build project
     permissions:
-      contents: write
-      packages: write
-
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          fetch-depth: 0
+          go-version-file: go.mod
+          cache: true
 
       - name: Verify native calls library is committed
         run: |
           git ls-files --error-unmatch slim_libntgcalls.so
           test -s slim_libntgcalls.so
+
+      - name: Build application
+        run: go build -trimpath -ldflags="-s -w" ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test ./...
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Tag, build, and push image
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      tag: ${{ steps.versioning.outputs.tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get next version
         id: versioning
@@ -33,7 +61,7 @@ jobs:
           # Get latest tag or default to v1.27.0
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.27.0")
           echo "Latest tag: $LATEST_TAG"
-          
+
           # Parse version components
           VERSION=${LATEST_TAG#v}
           MAJOR=$(echo $VERSION | cut -d. -f1)
@@ -43,7 +71,7 @@ jobs:
           # Get commit message to determine bump type
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
-          
+
           if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]] || [[ "$COMMIT_MSG" =~ [a-z]+\!: ]]; then
             echo "Major bump detected"
             MAJOR=$((MAJOR + 1))
@@ -57,10 +85,9 @@ jobs:
             echo "Patch bump detected (default)"
             PATCH=$((PATCH + 1))
           fi
-          
+
           NEW_TAG="v$MAJOR.$MINOR.$PATCH"
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
-          echo "$NEW_TAG" > ver.txt
           echo "New calculated tag: $NEW_TAG"
 
       - name: Create Git Tag
@@ -69,6 +96,9 @@ jobs:
           git config user.email "github-actions@github.com"
           git tag -a ${{ steps.versioning.outputs.tag }} -m "${{ github.event.head_commit.message }}"
           git push origin ${{ steps.versioning.outputs.tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -83,6 +113,7 @@ jobs:
           context: .
           file: Dockerfile
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:prod
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.versioning.outputs.tag }}
@@ -90,11 +121,31 @@ jobs:
             VERSION=${{ steps.versioning.outputs.tag }}
 
   deploy:
-    needs: release-and-build
+    needs: build-and-push
     runs-on: ubuntu-latest
+    name: Deploy to production
+    environment:
+      name: production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          HOST: ${{ secrets.HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SERVICE_KEY: ${{ secrets.SERVICE_KEY }}
+        run: |
+          test -n "$HOST" || { echo "HOST is not configured"; exit 1; }
+          test -n "$SSH_PRIVATE_KEY" || { echo "SSH_PRIVATE_KEY is not configured"; exit 1; }
+          test -n "$DB_USER" || { echo "DB_USER is not configured"; exit 1; }
+          test -n "$DB_PASSWORD" || { echo "DB_PASSWORD is not configured"; exit 1; }
+          test -n "$SERVICE_KEY" || { echo "SERVICE_KEY is not configured"; exit 1; }
+
+      - name: Write release version marker
+        run: echo "${{ needs.build-and-push.outputs.tag }}" > ver.txt
 
       - name: Copy configs to server
         uses: appleboy/scp-action@v0.1.7
@@ -107,30 +158,39 @@ jobs:
 
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          HOST: ${{ secrets.HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SERVICE_KEY: ${{ secrets.SERVICE_KEY }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: REGISTRY,IMAGE_NAME,HOST,DB_USER,DB_PASSWORD,SERVICE_KEY
           script: |
+            set -e
             cd /bot/marusia/air_tguserbot
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
+
             # Create secret file for ConfigService
-            echo "${{ secrets.SERVICE_KEY }}" > .service_key
+            echo "$SERVICE_KEY" > .service_key
             # т.к. FROM gcr.io/distroless/cc-debian12:nonroot
             chmod 644 .service_key
-            
+
             # 1. Create .env file for Docker Compose
-            echo "DOMAIN=${{ secrets.HOST }}" > .env
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "DOMAIN=$HOST" > .env
+            echo "DB_USER=$DB_USER" >> .env
+            echo "DB_PASSWORD=$DB_PASSWORD" >> .env
             chmod 600 .env
-            
+
             # 2. Pull from GHCR and tag locally with the name used by prod.yml
-            FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:prod"
+            FULL_IMAGE_NAME="$REGISTRY/$IMAGE_NAME:prod"
             docker pull $FULL_IMAGE_NAME
             docker tag $FULL_IMAGE_NAME tguserbot:prod
-            
+
             # 3. Restart application
             docker compose -f prod.yml up -d --force-recreate
             docker image prune -f

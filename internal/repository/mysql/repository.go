@@ -55,6 +55,80 @@ func (nb *NullBytes) Scan(value any) error {
 	return nil
 }
 
+// userScanRow хранит nullable-колонки, общие для запросов настроек TgUserBot,
+// и умеет накладывать их на domain.TgUserBotData.
+type userScanRow struct {
+	name        sql.NullString
+	assistantId sql.NullString
+	provider    sql.NullByte
+	data        NullBytes
+	start       sql.NullBool
+	end         sql.NullBool
+	target      sql.NullBool
+	tgUserBot   sql.NullString
+}
+
+// scanTargets возвращает адреса полей в порядке колонок SELECT:
+// UserID, TgUserBot, TgUserBot_enabled, Name, AssistantId, Data,
+// Provider, Start, End, Target.
+func (s *userScanRow) scanTargets(user *domain.TgUserBotData) []any {
+	return []any{
+		&user.UserId,
+		&s.tgUserBot,
+		&user.TgUserBotEnabled,
+		&s.name,
+		&s.assistantId,
+		&s.data,
+		&s.provider,
+		&s.start,
+		&s.end,
+		&s.target,
+	}
+}
+
+// apply переносит просканированные nullable-значения в user.
+func (s *userScanRow) apply(user *domain.TgUserBotData) {
+	// Репозиторий возвращает сырое значение TgUserBot из БД.
+	if s.tgUserBot.Valid {
+		user.TgUserBot = s.tgUserBot.String
+	}
+
+	if s.assistantId.Valid {
+		user.AssistantId = s.assistantId.String
+	}
+
+	if s.name.Valid {
+		user.AssistName = s.name.String
+	}
+
+	// Если провайдер не указан (у пользователя нет модели), ставим OpenAI по умолчанию.
+	if s.provider.Valid {
+		user.Provider = comdom.ProviderType(s.provider.Byte)
+	} else {
+		user.Provider = comdom.ProviderOpenAI
+	}
+
+	if s.data.Valid {
+		if meta, metaErr := create.DecompressModelData(s.data.Bytes); metaErr == nil {
+			user.MetaAction = meta.MetaAction
+			user.Triggers = meta.Triggers
+			user.AskLimit = uint32(meta.Espero.Limit)
+			user.Espero = meta.Espero.Wait
+			user.Ignore = meta.Espero.Ignore
+		}
+	}
+
+	if s.start.Valid {
+		user.Events.Start = s.start.Bool
+	}
+	if s.end.Valid {
+		user.Events.End = s.end.Bool
+	}
+	if s.target.Valid {
+		user.Events.Target = s.target.Bool
+	}
+}
+
 // GetTgUserBotUsers получает список пользователей с настройками TgUserBot
 // Возвращает только пользователей с включенными ботами (TgUserBot_enabled = 1)
 func (r *Implementation) GetTgUserBotUsers(ctx context.Context) ([]domain.TgUserBotData, error) {
@@ -104,74 +178,12 @@ func (r *Implementation) GetTgUserBotUsers(ctx context.Context) ([]domain.TgUser
 	var users []domain.TgUserBotData
 	for rows.Next() {
 		var user domain.TgUserBotData
-		var name, assistantId sql.NullString // На случай NULL значений
-		var provider sql.NullByte            // Провайдер из БД (TINYINT)
-		var data NullBytes                   // Для поля Data из BLOB
-		var start, end, target sql.NullBool  // Для полей уведомлений
-		var tgUserBot sql.NullString         // Для TgUserBot
+		var scan userScanRow
 
-		err := rows.Scan(
-			&user.UserId,
-			&tgUserBot,
-			&user.TgUserBotEnabled,
-			&name,
-			&assistantId,
-			&data,
-			&provider,
-			&start,
-			&end,
-			&target,
-		)
-		if err != nil {
+		if err := rows.Scan(scan.scanTargets(&user)...); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-
-		// Репозиторий возвращает сырое значение TgUserBot из БД.
-		if tgUserBot.Valid {
-			user.TgUserBot = tgUserBot.String
-		}
-
-		// Обработка NULL значений
-		if assistantId.Valid {
-			user.AssistantId = assistantId.String
-		}
-
-		if name.Valid {
-			user.AssistName = name.String
-		}
-
-		// Обработка информации о провайдере
-		if provider.Valid {
-			user.Provider = comdom.ProviderType(provider.Byte)
-		} else {
-			// Если провайдер не указан (у пользователя нет модели), устанавливаем значение по умолчанию
-			user.Provider = comdom.ProviderOpenAI // 1 = OpenAI по умолчанию
-		}
-
-		// Распаковываем и обрабатываем data если она существует
-		if data.Valid {
-			meta, metaErr := create.DecompressModelData(data.Bytes)
-			if metaErr == nil {
-				user.MetaAction = meta.MetaAction
-				user.Triggers = meta.Triggers
-
-				// Заполняем поля из структуры Espero
-				user.AskLimit = uint32(meta.Espero.Limit)
-				user.Espero = meta.Espero.Wait
-				user.Ignore = meta.Espero.Ignore
-			}
-		}
-
-		// Обработка полей уведомлений
-		if start.Valid {
-			user.Events.Start = start.Bool
-		}
-		if end.Valid {
-			user.Events.End = end.Bool
-		}
-		if target.Valid {
-			user.Events.Target = target.Bool
-		}
+		scan.apply(&user)
 
 		users = append(users, user)
 	}
@@ -225,24 +237,9 @@ func (r *Implementation) GetTgUserBotUser(ctx context.Context, userId uint32) (*
 	row := r.db.Conn().QueryRowContext(ctx, query, userId)
 
 	var user domain.TgUserBotData
-	var name, assistantId sql.NullString // На случай NULL значений
-	var provider sql.NullByte            // Провайдер из БД (TINYINT)
-	var data NullBytes                   // Для поля Data из BLOB
-	var start, end, target sql.NullBool  // Для полей уведомлений
-	var tgUserBot sql.NullString         // Для TgUserBot
+	var scan userScanRow
 
-	err := row.Scan(
-		&user.UserId,
-		&tgUserBot,
-		&user.TgUserBotEnabled,
-		&name,
-		&assistantId,
-		&data,
-		&provider,
-		&start,
-		&end,
-		&target,
-	)
+	err := row.Scan(scan.scanTargets(&user)...)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -256,52 +253,7 @@ func (r *Implementation) GetTgUserBotUser(ctx context.Context, userId uint32) (*
 		}
 	}
 
-	// Репозиторий возвращает сырое значение TgUserBot из БД.
-	if tgUserBot.Valid {
-		user.TgUserBot = tgUserBot.String
-	}
-
-	// Обработка NULL значений
-	if assistantId.Valid {
-		user.AssistantId = assistantId.String
-	}
-
-	if name.Valid {
-		user.AssistName = name.String
-	}
-
-	// Обработка информации о провайдере
-	if provider.Valid {
-		user.Provider = comdom.ProviderType(provider.Byte)
-	} else {
-		// Если провайдер не указан (у пользователя нет модели), устанавливаем значение по умолчанию
-		user.Provider = comdom.ProviderOpenAI // 1 = OpenAI по умолчанию
-	}
-
-	// Распаковываем и обрабатываем data если она существует
-	if data.Valid {
-		meta, metaErr := create.DecompressModelData(data.Bytes)
-		if metaErr == nil {
-			user.MetaAction = meta.MetaAction
-			user.Triggers = meta.Triggers
-
-			// Заполняем поля из структуры Espero
-			user.AskLimit = uint32(meta.Espero.Limit)
-			user.Espero = meta.Espero.Wait
-			user.Ignore = meta.Espero.Ignore
-		}
-	}
-
-	// Обработка полей уведомлений
-	if start.Valid {
-		user.Events.Start = start.Bool
-	}
-	if end.Valid {
-		user.Events.End = end.Bool
-	}
-	if target.Valid {
-		user.Events.Target = target.Bool
-	}
+	scan.apply(&user)
 
 	return &user, nil
 }

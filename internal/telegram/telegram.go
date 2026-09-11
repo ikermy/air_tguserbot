@@ -68,6 +68,15 @@ type ORCClient interface {
 	GetUserMasterKey(ctx context.Context, userId uint32) ([32]byte, error)
 }
 
+// Start - ядро является единственным
+// владельцем lifecycle realtime-сессии: оно запускает провайдера, отдаёт
+// каналы аудио/событий через StartCh.Realtime и закрывает сессию по respId.
+// Реализуется *startpoint.Start и прокидывается из app.New.
+type Start interface {
+	StartSession(start *model.StartCh) <-chan error
+	CloseSession(respId uint64)
+}
+
 type TgUserBotToken struct {
 	phone       string
 	appHash     string
@@ -92,6 +101,7 @@ type Bot struct {
 	db     DB    // База данных
 	op     Operator
 	end    Endpoint
+	start  Start
 	crm    *crm.User        // Настройки CRM для бота
 	assist *model.Assistant // Конфигурация ассистента (указатель для экономии памяти)
 	// Клиент Telegram
@@ -144,6 +154,7 @@ type User struct {
 	crm         CRM
 	bot         sync.Map // key: uint32 (userID), value: *Bot
 	op          Operator
+	start       Start // Ядро Start (stage 5) — владелец lifecycle realtime-сессий
 	rpc         ORCClient
 	masterKeyMu sync.Mutex
 	masterKey   [32]byte
@@ -202,6 +213,10 @@ func (u *User) webHook() {
 }
 
 func (u *User) SetOperator(op Operator) { u.op = op }
+
+// SetStart прокидывает ядро Start в User, чтобы боты могли запускать/закрывать
+// realtime-сессии через единственного владельца lifecycle.
+func (u *User) SetStart(s Start) { u.start = s }
 
 // GetStartCh возвращает канал StartCh для обработки событий старта
 func (u *User) GetStartCh() chan model.StartCh {
@@ -777,6 +792,7 @@ func (u *User) initializeBot(userID uint32, tokenData TgUserBotToken, assist *mo
 		db:          u.db,
 		end:         u.end,
 		op:          u.op,
+		start:       u.start,
 		assist:      assist,
 		uids:        tokenData.uids,
 		ctx:         botCtx,
@@ -2062,12 +2078,12 @@ func (b *Bot) initializeUserSession(userID int64, userName string) (*UserSession
 	// Получаем канал пользователя
 	userCh, err := b.mod.GetCh(uint64(userID))
 	if err != nil {
-		// "получены пустые данные" — новый пользователь, канал будет создан StarterListener'ом.
+		// "получены пустые данные" — новый пользователь, канал будет создан StarterSession.
 		// "канал не найден" — пользователь известен Redis, но состояние mod-роутера утеряно после рестарта;
 		// оба случая ожидаемы и не являются критической ошибкой.
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "получены пустые данные") || strings.Contains(errMsg, "канал не найден") {
-			logger.Debug("initializeUserSession: канал ещё не создан для пользователя %s (id=%d), будет инициализирован через StarterListener", userName, userID, b.userID)
+			logger.Debug("initializeUserSession: канал ещё не создан для пользователя %s (id=%d), будет инициализирован через StarterSession", userName, userID, b.userID)
 		} else {
 			logger.Error("initializeUserSession: ошибка получения канала для пользователя %s: %v", userName, err, b.userID)
 			return nil, fmt.Errorf("GetCh failed: %w", err)
@@ -2087,11 +2103,12 @@ func (b *Bot) initializeUserSession(userID int64, userName string) (*UserSession
 // Вызывает b.user.StartCh для запуска обработки сессии
 func (b *Bot) queueUserSession(userSession *UserSessionInit) error {
 	startCh := model.StartCh{
-		Ctx:     b.ctx,
-		Model:   userSession.UserModel,
-		Chanel:  userSession.UserCh,
-		TreadId: userSession.dialogID,
-		RespId:  userSession.UserId,
+		Ctx:      b.ctx,
+		Channel:  comdom.Telegram,
+		Model:    userSession.UserModel,
+		Chanel:   userSession.UserCh,
+		ThreadId: userSession.dialogID,
+		RespId:   userSession.UserId,
 	}
 
 	select {

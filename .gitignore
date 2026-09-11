@@ -41,7 +41,6 @@ cfg.env
 *.env
 config.yaml
 secrets.yaml
-.service_key
 
 # Debug and log files
 *.log
