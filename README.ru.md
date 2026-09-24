@@ -4,7 +4,7 @@
 
 [🇬🇧 English version](README.md)
 
-![Версия Go](https://img.shields.io/badge/Go-1.25.8-00ADD8?logo=go)
+![Версия Go](https://img.shields.io/badge/Go-1.26.0-00ADD8?logo=go)
 ![Лицензия](https://img.shields.io/badge/license-MIT-blue)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/marusia_dev)
 
@@ -125,7 +125,7 @@ CALL_ENDED
 
 ## Требования
 
-- Go 1.25 или новее;
+- Go 1.26 или новее;
 - MariaDB/MySQL;
 - Redis — необязательно, но рекомендуется для восстановления состояния;
 - доступ к `air_orchestrator` по gRPC;

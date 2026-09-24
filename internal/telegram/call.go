@@ -393,7 +393,7 @@ func (b *Bot) startRealtimeSession(cs *callSession) error {
 
 	startCh := &model.StartCh{
 		Ctx:      b.ctx,
-		Channel:  comdom.Telegram,
+		ChName:   comdom.Telegram,
 		Model:    cs.userModel,
 		ThreadId: cs.dialogID,
 		RespId:   cs.respId,

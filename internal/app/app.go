@@ -25,6 +25,8 @@ import (
 
 type DB interface {
 	HandlerClose()
+	CloseDoneCh()
+	GetExitCh() <-chan struct{}
 }
 
 type Mod interface {
@@ -64,7 +66,7 @@ type App struct {
 	CallRPC *internalrpc.Server
 }
 
-func New(parent context.Context) *App {
+func New(parent context.Context, redisCfg domain.Redis) *App {
 	ctx, cancel := context.WithCancel(parent)
 
 	d, err := db.New(ctx)
@@ -97,11 +99,11 @@ func New(parent context.Context) *App {
 	})
 
 	var redisClient redis.UniversalClient
-	if domain.RedisAddr != "" {
+	if redisCfg.RedisAddr != "" {
 		redisClient = redis.NewClient(&redis.Options{
-			Addr:     domain.RedisAddr,
-			Password: domain.RedisPassword,
-			DB:       domain.RedisDB,
+			Addr:     redisCfg.RedisAddr,
+			Password: redisCfg.RedisPassword,
+			DB:       redisCfg.RedisDB,
 		})
 
 		if err := redisClient.Ping(ctx).Err(); err != nil {
@@ -133,6 +135,11 @@ func New(parent context.Context) *App {
 		Telega:  t,
 		CallRPC: callRPC,
 	}
+}
+
+// ExitCh возвращает канал, который закрывается при завершении работы приложения.
+func (a *App) ExitCh() <-chan struct{} {
+	return a.DB.GetExitCh()
 }
 
 func (a *App) Run() {
@@ -172,7 +179,7 @@ func (a *App) Run() {
 		go func() {
 			ticker := time.NewTicker(5 * time.Second)
 			<-ticker.C
-			close(domain.UsersDB)
+			a.DB.CloseDoneCh()
 		}()
 
 		logger.Info("App: получен сигнал завершения, начинаю shutdown")
@@ -189,7 +196,7 @@ func (a *App) Run() {
 		// ждём всех producers и закрываем канал
 		bus.WaitAndClose()
 		// Отправляем сигнал о завершении работы с БД
-		close(domain.UsersDB)
+		a.DB.CloseDoneCh()
 	}()
 }
 
@@ -209,30 +216,6 @@ func (a *App) Starter() {
 
 	logger.Infoln("StartCh closed")
 }
-
-//func (a *App) Starter() {
-//	errCh := make(chan error, 10)
-//
-//	// Слушаю errCh в отдельной горутине
-//	go func() {
-//		for err := range errCh {
-//			if err != nil {
-//				logger.Error("Error in errCh: %v", err)
-//			}
-//		}
-//	}()
-//
-//	// Простой цикл чтения из канала без избыточного select
-//	for start := range a.Telega.GetStartCh() {
-//		// Запускаю слушателя с пользовательскими данными
-//		go func(startData model.StartCh) {
-//			// Вызываем слушателя просто как процедуру, без ожидания результата
-//			a.Start.StarterListener(startData, errCh)
-//		}(start) // Передаем копию start в горутину
-//	}
-//
-//	logger.Infoln("StartCh closed") // Невозможное сообщение, так как канал не закрывается
-//}
 
 func uReader(readCh <-chan com.LogMsg) {
 	for info := range readCh {

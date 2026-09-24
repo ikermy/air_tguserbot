@@ -33,16 +33,19 @@ func main() {
 	logger.Debug(com.GetVersionInfo())
 
 	// ── Redis ───────────────────────────────────────────────────────────────────
-	domain.RedisAddr = os.Getenv("REDIS_ADDR")
-	domain.RedisPassword = os.Getenv("REDIS_PASSWORD")
+	redisCfg := domain.Redis{
+		RedisAddr:     os.Getenv("REDIS_ADDR"),
+		RedisPassword: os.Getenv("REDIS_PASSWORD"),
+		RedisDB:       0,
+	}
 	dbStr := os.Getenv("REDIS_DB")
 	if dbStr != "" {
-		if n, err := strconv.Atoi(dbStr); err == nil {
-			domain.RedisDB = n
+		if rdb, err := strconv.Atoi(dbStr); err == nil {
+			redisCfg.RedisDB = rdb
 		}
 	}
-	if domain.RedisAddr != "" {
-		logger.Info("Redis: адрес=%s, db=%d", domain.RedisAddr, domain.RedisDB)
+	if redisCfg.RedisAddr != "" {
+		logger.Info("Redis: адрес=%s, db=%d", redisCfg.RedisAddr, redisCfg.RedisDB)
 	} else {
 		logger.Info("Redis: не настроен (REDIS_ADDR пуст)")
 	}
@@ -51,11 +54,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	a := app.New(ctx)
+	a := app.New(ctx, redisCfg)
 	a.Run()
 
 	// Ожидание завершения работы
-	<-domain.Exit
+	<-a.ExitCh()
 
 	logger.Infoln("Приложение air_tguserbot завершено")
 }

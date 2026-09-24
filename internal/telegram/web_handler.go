@@ -60,7 +60,7 @@ var upgrader = websocket.Upgrader{
 // AuthWebSocketHandler — обработчик WebSocket для авторизации и отслеживания состояния.
 func (u *User) AuthWebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	userId, conn, funcClose, err := wsHandlerHelper(w, r)
-	if err != nil {
+	if err != nil || userId == 0 {
 		metrics.ObserveWebSocketEvent("auth", "upgrade_error")
 		logger.Error("'HandlerGetContactsWS' Ошибка установки WebSocket: %v", err)
 		return

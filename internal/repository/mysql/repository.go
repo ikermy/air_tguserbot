@@ -264,37 +264,11 @@ func (r *Implementation) SaveChannelData(ctx context.Context, userId uint32, cha
 	ctx, cancel := context.WithTimeout(ctx, mode.GetSQLTimeToCancel())
 	defer cancel()
 
-	if userId == 0 || channelType == "" {
-		return fmt.Errorf("получены некорректные значения: userId или channelType пусты")
-	}
-
 	// Конвертируем boolean в int для MySQL
 	enabledInt := 0
 	if enabled {
 		enabledInt = 1
 	}
-
-	// Проверяем, является ли data уже валидным JSON
-	//var jsonData string
-	//if json.Valid([]byte(data)) {
-	//	jsonData = data
-	//} else {
-	//	// Выбираем ключ в зависимости от типа канала
-	//	var key string
-	//	switch channelType {
-	//	case "tgbot":
-	//		key = "token"
-	//	case "widget":
-	//		key = "script"
-	//	case "tgubot":
-	//		key = "token"
-	//	default:
-	//		key = "error" // Дефолтный ключ ошибка
-	//	}
-	//
-	//	// Оборачиваем данные в JSON объект с соответствующим ключом
-	//	jsonData = fmt.Sprintf(`{%q: %q}`, key, data)
-	//}
 
 	// Вызываем хранимую процедуру для сохранения канала
 	_, err := r.db.Conn().ExecContext(ctx, "CALL SaveChannelData(?, ?, ?, ?)",

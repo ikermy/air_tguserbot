@@ -183,9 +183,9 @@ jobs:
             chmod 644 .service_key
 
             # 1. Create .env file for Docker Compose
-            echo "DOMAIN=$HOST" > .env
-            echo "DB_USER=$DB_USER" >> .env
-            echo "DB_PASSWORD=$DB_PASSWORD" >> .env
+            printf 'DOMAIN=%s\n' "$(printf '%s' "$HOST" | tr -d '\r\n')" > .env
+            printf 'DB_USER=%s\n' "$(printf '%s' "$DB_USER" | tr -d '\r\n')" >> .env
+            printf 'DB_PASSWORD=%s\n' "$(printf '%s' "$DB_PASSWORD" | tr -d '\r\n')" >> .env
             chmod 600 .env
 
             # 2. Pull from GHCR and tag locally with the name used by prod.yml
@@ -194,5 +194,5 @@ jobs:
             docker tag $FULL_IMAGE_NAME tguserbot:prod
 
             # 3. Restart application
-            docker compose -f prod.yml up -d --force-recreate
+            docker compose -f prod.yml up -d --force-recreate --no-build
             docker image prune -f

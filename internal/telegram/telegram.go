@@ -2104,9 +2104,9 @@ func (b *Bot) initializeUserSession(userID int64, userName string) (*UserSession
 func (b *Bot) queueUserSession(userSession *UserSessionInit) error {
 	startCh := model.StartCh{
 		Ctx:      b.ctx,
-		Channel:  comdom.Telegram,
+		ChName:   comdom.Telegram,
 		Model:    userSession.UserModel,
-		Chanel:   userSession.UserCh,
+		Channel:  userSession.UserCh,
 		ThreadId: userSession.dialogID,
 		RespId:   userSession.UserId,
 	}
