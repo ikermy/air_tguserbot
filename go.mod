@@ -3,7 +3,7 @@ module air_tguserbot
 go 1.26.0
 
 require (
-	github.com/ebitengine/purego v0.11.1
+	github.com/ebitengine/purego v0.11.2
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/gotd/td v0.162.0
