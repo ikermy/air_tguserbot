@@ -6,7 +6,7 @@ require (
 	github.com/ebitengine/purego v0.11.1
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/gotd/td v0.162.0
+	github.com/gotd/td v0.163.0
 	github.com/ikermy/air-common v1.60.3
 	github.com/ikermy/air-logger/v2 v2.1.4
 	github.com/prometheus/client_golang v1.24.1
