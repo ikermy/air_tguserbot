@@ -9,15 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ikermy/air-common/pkg/com"
-	"github.com/ikermy/air-common/pkg/crypto"
+	"github.com/ikermy/air-common/v2/pkg/com"
+	"github.com/ikermy/air-common/v2/pkg/crypto"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 )
 
 // parseTgUserBotToken парсит TgUserBotToken из JSON-строки.
 // Поле session может содержать произвольные байты в base64, поэтому
 // перед стандартным json.Unmarshal выполняется ручное извлечение этого поля.
-func (u *User) parseTgUserBotToken(userId uint32, jsonTOKEN string) (TgUserBotToken, error) {
+func (u *User) parseTgUserBotToken(userId uint64, jsonTOKEN string) (TgUserBotToken, error) {
 	raw := jsonTOKEN
 
 	// Backward compatibility: старый формат хранится как JSON-объект

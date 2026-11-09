@@ -13,7 +13,7 @@ import (
 )
 
 // GetUserContactsStreaming получает контакты и вызывает колбэк для каждого элемента
-func (u *User) GetUserContactsStreaming(userId uint32, callback func(contact map[string]any, current, total int)) error {
+func (u *User) GetUserContactsStreaming(userId uint64, callback func(contact map[string]any, current, total int)) error {
 
 	// Получаем бота по userId
 	bot, exists := u.getBot(userId)

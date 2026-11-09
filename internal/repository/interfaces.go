@@ -4,13 +4,13 @@ import (
 	"air_tguserbot/internal/domain"
 	"context"
 
-	"github.com/ikermy/air-common/pkg/comdb"
+	"github.com/ikermy/air-common/v2/pkg/comdb"
 )
 
 type InternalDBRepository interface {
-	SaveChannelData(ctx context.Context, userId uint32, channelType string, data string, enabled bool) error
+	SaveChannelData(ctx context.Context, userId uint64, channelType string, data string, enabled bool) error
 	GetTgUserBotUsers(ctx context.Context) ([]domain.TgUserBotData, error)
-	GetTgUserBotUser(ctx context.Context, userId uint32) (*domain.TgUserBotData, error)
+	GetTgUserBotUser(ctx context.Context, userId uint64) (*domain.TgUserBotData, error)
 }
 
 type ExternalDBRepository interface {

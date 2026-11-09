@@ -15,13 +15,13 @@ type testCallAPI struct {
 	events chan telegram.CallEvent
 }
 
-func (a *testCallAPI) InitiateOutgoingCall(context.Context, uint32, string) (*telegram.Call, error) {
+func (a *testCallAPI) InitiateOutgoingCall(context.Context, uint64, string) (*telegram.Call, error) {
 	return nil, nil
 }
-func (a *testCallAPI) SubscribeCallEvents(context.Context, uint32, string, uint64) (<-chan telegram.CallEvent, error) {
+func (a *testCallAPI) SubscribeCallEvents(context.Context, uint64, string, uint64) (<-chan telegram.CallEvent, error) {
 	return a.events, nil
 }
-func (a *testCallAPI) HangupCall(uint32, string) error { return nil }
+func (a *testCallAPI) HangupCall(uint64, string) error { return nil }
 
 func TestStartOutgoingCallValidatesRequest(t *testing.T) {
 	s := NewServer(&testCallAPI{}, nil)

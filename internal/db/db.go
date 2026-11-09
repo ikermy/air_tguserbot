@@ -7,7 +7,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ikermy/air-common/pkg/comdb"
+	"github.com/ikermy/air-common/v2/pkg/comdb"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -23,7 +23,7 @@ type DB struct {
 	Exit   chan struct{} // Канал завершения работы приложения
 }
 
-func (d *DB) SaveChannelData(ctx context.Context, userId uint32, channelType string, data string, enabled bool) error {
+func (d *DB) SaveChannelData(ctx context.Context, userId uint64, channelType string, data string, enabled bool) error {
 	return d.repo.Internal.SaveChannelData(ctx, userId, channelType, data, enabled)
 }
 
@@ -31,7 +31,7 @@ func (d *DB) GetTgUserBotUsers(ctx context.Context) ([]domain.TgUserBotData, err
 	return d.repo.Internal.GetTgUserBotUsers(ctx)
 }
 
-func (d *DB) GetTgUserBotUser(ctx context.Context, userId uint32) (*domain.TgUserBotData, error) {
+func (d *DB) GetTgUserBotUser(ctx context.Context, userId uint64) (*domain.TgUserBotData, error) {
 	return d.repo.Internal.GetTgUserBotUser(ctx, userId)
 }
 

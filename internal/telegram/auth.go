@@ -16,7 +16,7 @@ import (
 	"github.com/gotd/td/telegram/auth/qrlogin"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
-	"github.com/ikermy/air-common/pkg/com"
+	"github.com/ikermy/air-common/v2/pkg/com"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 )
 
@@ -94,7 +94,7 @@ func (h *LoginTokenUpdateHandler) Handle(ctx context.Context, u tg.UpdatesClass)
 }
 
 // AuthenticateWithQRForWeb - версия с поддержкой веб-интерфейса и 2FA
-func AuthenticateWithQRForWeb(userID uint32, appID int, appHash string, stateChan chan<- AuthState, passwordChan <-chan string) ([]byte, error) {
+func AuthenticateWithQRForWeb(userID uint64, appID int, appHash string, stateChan chan<- AuthState, passwordChan <-chan string) ([]byte, error) {
 	startedAt := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), authTimeout)
 	defer cancel()

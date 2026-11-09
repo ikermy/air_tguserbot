@@ -17,9 +17,9 @@ const (
 )
 
 type CacheMethods interface {
-	Has(ctx context.Context, userID uint32, senderID int64) (bool, error)
-	Set(ctx context.Context, userID uint32, senderID int64) error
-	LoadUser(ctx context.Context, userID uint32) ([]int64, error)
+	Has(ctx context.Context, userID uint64, senderID int64) (bool, error)
+	Set(ctx context.Context, userID uint64, senderID int64) error
+	LoadUser(ctx context.Context, userID uint64) ([]int64, error)
 }
 
 type cache struct {
@@ -33,7 +33,7 @@ func newRedisFirstInteractionCache(client redis.UniversalClient) CacheMethods {
 	return &cache{client: client}
 }
 
-func (c *cache) Has(ctx context.Context, userID uint32, senderID int64) (bool, error) {
+func (c *cache) Has(ctx context.Context, userID uint64, senderID int64) (bool, error) {
 	result, err := c.client.Exists(ctx, firstInteractionKey(userID, senderID)).Result()
 	if err != nil {
 		return false, err
@@ -41,11 +41,11 @@ func (c *cache) Has(ctx context.Context, userID uint32, senderID int64) (bool, e
 	return result > 0, nil
 }
 
-func (c *cache) Set(ctx context.Context, userID uint32, senderID int64) error {
+func (c *cache) Set(ctx context.Context, userID uint64, senderID int64) error {
 	return c.client.Set(ctx, firstInteractionKey(userID, senderID), "1", firstInteractionTTL).Err()
 }
 
-func (c *cache) LoadUser(ctx context.Context, userID uint32) ([]int64, error) {
+func (c *cache) LoadUser(ctx context.Context, userID uint64) ([]int64, error) {
 	pattern := fmt.Sprintf("%s*", firstInteractionUserPrefix(userID))
 	iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
 
@@ -65,15 +65,15 @@ func (c *cache) LoadUser(ctx context.Context, userID uint32) ([]int64, error) {
 	return ids, nil
 }
 
-func firstInteractionKey(userID uint32, senderID int64) string {
+func firstInteractionKey(userID uint64, senderID int64) string {
 	return fmt.Sprintf("first_interaction:%d:%d:%d", firstInteractionServiceID, userID, senderID)
 }
 
-func firstInteractionUserPrefix(userID uint32) string {
+func firstInteractionUserPrefix(userID uint64) string {
 	return fmt.Sprintf("first_interaction:%d:%d:", firstInteractionServiceID, userID)
 }
 
-func parseFirstInteractionKey(userID uint32, key string) (int64, bool) {
+func parseFirstInteractionKey(userID uint64, key string) (int64, bool) {
 	prefix := firstInteractionUserPrefix(userID)
 	if !strings.HasPrefix(key, prefix) {
 		return 0, false

@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/ikermy/air-common/pkg/comdom"
+import "github.com/ikermy/air-common/v2/pkg/comdom"
 
 // Notifications события уведомлений
 type Notifications struct {
@@ -11,7 +11,7 @@ type Notifications struct {
 
 // TgUserBotData представляет данные пользователя с TgUserBot
 type TgUserBotData struct {
-	UserId           uint32              // Идентификатор пользователя
+	UserId uint64              // Идентификатор пользователя
 	TgUserBot        string              // Токен телеграм-бота
 	SessionData      string              // Данные сессии
 	TgUserBotEnabled bool                // Флаг включения бота

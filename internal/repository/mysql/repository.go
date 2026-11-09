@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ikermy/air-common/pkg/comdb"
-	"github.com/ikermy/air-common/pkg/comdom"
-	"github.com/ikermy/air-common/pkg/mode"
-	"github.com/ikermy/air-common/pkg/model/create"
+	"github.com/ikermy/air-common/v2/pkg/comdb"
+	"github.com/ikermy/air-common/v2/pkg/comdom"
+	"github.com/ikermy/air-common/v2/pkg/mode"
+	"github.com/ikermy/air-common/v2/pkg/model/create"
 )
 
 type Implementation struct {
@@ -204,7 +204,7 @@ func (r *Implementation) GetTgUserBotUsers(ctx context.Context) ([]domain.TgUser
 }
 
 // GetTgUserBotUser получает настройки TgUserBot для конкретного пользователя
-func (r *Implementation) GetTgUserBotUser(ctx context.Context, userId uint32) (*domain.TgUserBotData, error) {
+func (r *Implementation) GetTgUserBotUser(ctx context.Context, userId uint64) (*domain.TgUserBotData, error) {
 	// Дочерний контекст с тайм-аутом на операцию
 	ctx, cancel := context.WithTimeout(ctx, mode.GetSQLTimeToCancel())
 	defer cancel()
@@ -259,25 +259,9 @@ func (r *Implementation) GetTgUserBotUser(ctx context.Context, userId uint32) (*
 }
 
 // SaveChannelData сохраняет данные канала в базе данных
-func (r *Implementation) SaveChannelData(ctx context.Context, userId uint32, channelType string, jsonData string, enabled bool) error {
-	// Дочерний контекст с тайм-аутом на операцию
-	ctx, cancel := context.WithTimeout(ctx, mode.GetSQLTimeToCancel())
-	defer cancel()
-
-	// Конвертируем boolean в int для MySQL
-	enabledInt := 0
-	if enabled {
-		enabledInt = 1
-	}
-
-	// Вызываем хранимую процедуру для сохранения канала
-	_, err := r.db.Conn().ExecContext(ctx, "CALL SaveChannelData(?, ?, ?, ?)",
-		userId,      // p_UserId
-		channelType, // p_Type
-		jsonData,    // p_Data (теперь валидный JSON)
-		enabledInt)  // p_Enabled
-
-	if err != nil {
+func (r *Implementation) SaveChannelData(ctx context.Context, userId uint64, channelType string, jsonData string, enabled bool) error {
+	// Сохраняем в legacy channels и в v2 user_channels/user_channel_configs.
+	if err := r.db.SaveChannelDataRaw(userId, channelType, jsonData, enabled); err != nil {
 		return fmt.Errorf("ошибка сохранения канала: %w", err)
 	}
 

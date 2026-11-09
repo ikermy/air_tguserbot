@@ -7,8 +7,8 @@ services:
     logging:
       driver: local
       options:
-        max-size: 5m
-        max-file: 2
+        max-size: 10m
+        max-file: 1
     labels:
       logging: loki
       app: air

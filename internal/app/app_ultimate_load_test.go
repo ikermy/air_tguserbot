@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ikermy/air-common/pkg/mode"
-	"github.com/ikermy/air-common/pkg/model"
-	"github.com/ikermy/air-common/pkg/model/google"
-	"github.com/ikermy/air-common/pkg/model/mistral"
-	"github.com/ikermy/air-common/pkg/model/openai"
-	"github.com/ikermy/air-common/pkg/rpc"
+	"github.com/ikermy/air-common/v2/pkg/mode"
+	"github.com/ikermy/air-common/v2/pkg/model"
+	"github.com/ikermy/air-common/v2/pkg/model/google"
+	"github.com/ikermy/air-common/v2/pkg/model/mistral"
+	"github.com/ikermy/air-common/v2/pkg/model/openai"
+	"github.com/ikermy/air-common/v2/pkg/rpc"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 )
 
@@ -63,9 +63,9 @@ func TestApp_UltimateMaxLoad(t *testing.T) {
 	var successful atomic.Int64
 	var failed atomic.Int64
 
-	for user := uint32(1); user <= users; user++ {
+	for user := uint64(1); user <= users; user++ {
 		wg.Add(1)
-		go func(user uint32) {
+		go func(user uint64) {
 			defer wg.Done()
 
 			assistant := model.Assistant{

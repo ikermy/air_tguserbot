@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/ikermy/air-common/pkg/crypto"
+	"github.com/ikermy/air-common/v2/pkg/crypto"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 )
 
@@ -27,7 +27,7 @@ func writeJSONError(w http.ResponseWriter, code int, msg string) {
 
 // parseUIDParam reads ?uid= from the query string and converts it to uint32.
 // On failure it writes the appropriate JSON error to w and returns (0, false).
-func parseUIDParam(w http.ResponseWriter, r *http.Request) (uint32, bool) {
+func parseUIDParam(w http.ResponseWriter, r *http.Request) (uint64, bool) {
 	uidStr := r.URL.Query().Get("uid")
 	if uidStr == "" {
 		writeJSONError(w, http.StatusBadRequest, "uid is required")
@@ -38,7 +38,7 @@ func parseUIDParam(w http.ResponseWriter, r *http.Request) (uint32, bool) {
 		writeJSONError(w, http.StatusBadRequest, "invalid uid")
 		return 0, false
 	}
-	return uint32(uid), true
+	return uid, true
 }
 
 var upgrader = websocket.Upgrader{
@@ -387,7 +387,7 @@ func (u *User) HandlerGetContactsWS(w http.ResponseWriter, r *http.Request) {
 	metrics.ObserveWebSocketEvent("contacts", "success")
 }
 
-func wsHandlerHelper(w http.ResponseWriter, r *http.Request) (uint32, *websocket.Conn, func(), error) {
+func wsHandlerHelper(w http.ResponseWriter, r *http.Request) (uint64, *websocket.Conn, func(), error) {
 	userId, ok := parseUIDParam(w, r)
 	if !ok {
 		return 0, nil, nil, fmt.Errorf("invalid user ID")
@@ -554,7 +554,7 @@ func (u *User) CallHangupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := uint32(userID64)
+	userID := userID64
 	bot, ok := u.getBot(userID)
 	if !ok {
 		http.Error(w, "bot not found", http.StatusNotFound)

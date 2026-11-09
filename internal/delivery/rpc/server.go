@@ -8,8 +8,8 @@ import (
 
 	"air_tguserbot/internal/telegram"
 
-	"github.com/ikermy/air-common/pkg/comdom"
-	"github.com/ikermy/air-common/pkg/model"
+	"github.com/ikermy/air-common/v2/pkg/comdom"
+	"github.com/ikermy/air-common/v2/pkg/model"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,13 +18,13 @@ import (
 )
 
 type CallAPI interface {
-	InitiateOutgoingCall(context.Context, uint32, string) (*telegram.Call, error)
-	SubscribeCallEvents(context.Context, uint32, string, uint64) (<-chan telegram.CallEvent, error)
-	HangupCall(uint32, string) error
+	InitiateOutgoingCall(context.Context, uint64, string) (*telegram.Call, error)
+	SubscribeCallEvents(context.Context, uint64, string, uint64) (<-chan telegram.CallEvent, error)
+	HangupCall(uint64, string) error
 }
 
 type DB interface {
-	GetActiveProvider(userID uint32) (comdom.ProviderType, error)
+	GetActiveProvider(userID uint64) (comdom.ProviderType, error)
 }
 
 type Server struct {
@@ -79,7 +79,7 @@ func (s *Server) SubscribeCallEvents(req *SubscribeCallEventsRequest, stream grp
 	}
 }
 
-func toProtoEvent(_ uint32, event telegram.CallEvent) *CallEvent {
+func toProtoEvent(_ uint64, event telegram.CallEvent) *CallEvent {
 	result := &CallEvent{CallId: event.CallID, Sequence: event.Sequence, TimestampUnixMs: event.Timestamp.UnixMilli(), Provider: CallProvider_CALL_PROVIDER_TELEGRAM, Delta: event.Delta, Text: event.Text, ResponseId: event.ResponseID, Reason: event.Reason}
 	if event.Type == "call_connected" {
 		result.Type, result.Phase = "call", "connected"

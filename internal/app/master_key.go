@@ -7,13 +7,13 @@ import (
 )
 
 type masterKeyClient interface {
-	GetUserMasterKey(context.Context, uint32) ([32]byte, error)
+	GetUserMasterKey(context.Context, uint64) ([32]byte, error)
 }
 
 type cachedMasterKeyClient struct {
 	client masterKeyClient
 	mu     sync.Mutex
-	items  map[uint32]masterKeyItem
+	items  map[uint64]masterKeyItem
 }
 
 type masterKeyItem struct {
@@ -22,10 +22,10 @@ type masterKeyItem struct {
 }
 
 func newCachedMasterKeyClient(client masterKeyClient) *cachedMasterKeyClient {
-	return &cachedMasterKeyClient{client: client, items: make(map[uint32]masterKeyItem)}
+	return &cachedMasterKeyClient{client: client, items: make(map[uint64]masterKeyItem)}
 }
 
-func (c *cachedMasterKeyClient) GetUserMasterKey(ctx context.Context, userID uint32) ([32]byte, error) {
+func (c *cachedMasterKeyClient) GetUserMasterKey(ctx context.Context, userID uint64) ([32]byte, error) {
 	c.mu.Lock()
 	if item, ok := c.items[userID]; ok && time.Now().Before(item.expires) {
 		c.mu.Unlock()
@@ -42,7 +42,7 @@ func (c *cachedMasterKeyClient) GetUserMasterKey(ctx context.Context, userID uin
 	return key, nil
 }
 
-func (c *cachedMasterKeyClient) InvalidateMasterKey(userID uint32) {
+func (c *cachedMasterKeyClient) InvalidateMasterKey(userID uint64) {
 	c.mu.Lock()
 	delete(c.items, userID)
 	c.mu.Unlock()

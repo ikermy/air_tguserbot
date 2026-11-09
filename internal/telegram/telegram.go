@@ -23,14 +23,14 @@ import (
 	"github.com/gotd/td/telegram/downloader"
 	"github.com/gotd/td/telegram/uploader"
 	"github.com/gotd/td/tg"
-	"github.com/ikermy/air-common/pkg/com"
-	"github.com/ikermy/air-common/pkg/comdb"
-	"github.com/ikermy/air-common/pkg/comdom"
-	"github.com/ikermy/air-common/pkg/crm"
-	"github.com/ikermy/air-common/pkg/endpoint"
-	"github.com/ikermy/air-common/pkg/mode"
-	"github.com/ikermy/air-common/pkg/model"
-	"github.com/ikermy/air-common/pkg/operator"
+	"github.com/ikermy/air-common/v2/pkg/com"
+	"github.com/ikermy/air-common/v2/pkg/comdb"
+	"github.com/ikermy/air-common/v2/pkg/comdom"
+	"github.com/ikermy/air-common/v2/pkg/crm"
+	"github.com/ikermy/air-common/v2/pkg/endpoint"
+	"github.com/ikermy/air-common/v2/pkg/mode"
+	"github.com/ikermy/air-common/v2/pkg/model"
+	"github.com/ikermy/air-common/v2/pkg/operator"
 	"github.com/ikermy/air-logger/v2/pkg/logger"
 	"github.com/redis/go-redis/v9"
 )
@@ -49,8 +49,8 @@ const (
 // Только методы которых нет в comdb.Exterior
 type IntDB interface {
 	GetTgUserBotUsers(ctx context.Context) ([]domain.TgUserBotData, error)
-	GetTgUserBotUser(ctx context.Context, userId uint32) (*domain.TgUserBotData, error)
-	SaveChannelData(ctx context.Context, userId uint32, channelType string, data string, enabled bool) error
+	GetTgUserBotUser(ctx context.Context, userId uint64) (*domain.TgUserBotData, error)
+	SaveChannelData(ctx context.Context, userId uint64, channelType string, data string, enabled bool) error
 }
 
 type DB interface {
@@ -65,7 +65,7 @@ type ExtDB = comdb.Exterior
 type CRM = crm.Inter
 
 type ORCClient interface {
-	GetUserMasterKey(ctx context.Context, userId uint32) ([32]byte, error)
+	GetUserMasterKey(ctx context.Context, userId uint64) ([32]byte, error)
 }
 
 // Start - ядро является единственным
@@ -95,7 +95,7 @@ type ContactInfo struct {
 }
 
 type Bot struct {
-	userID uint32 // ID пользователя в системе
+	userID uint64 // ID пользователя в системе
 	user   *User
 	mod    Model // Модель для работы с данными
 	db     DB    // База данных
@@ -152,7 +152,7 @@ type User struct {
 	mod         Model
 	end         Endpoint
 	crm         CRM
-	bot         sync.Map // key: uint32 (userID), value: *Bot
+	bot         sync.Map // key: uint64(userID), value: *Bot
 	op          Operator
 	start       Start // Ядро Start (stage 5) — владелец lifecycle realtime-сессий
 	rpc         ORCClient
@@ -164,7 +164,7 @@ type User struct {
 	httpServer  *deliveryhttp.Server // HTTP-сервер (для корректного shutdown)
 }
 
-func (u *User) getMasterKey(ctx context.Context, userID uint32) ([32]byte, error) {
+func (u *User) getMasterKey(ctx context.Context, userID uint64) ([32]byte, error) {
 	u.masterKeyMu.Lock()
 	if time.Since(u.masterKeyAt) < 5*time.Minute {
 		key := u.masterKey
@@ -224,7 +224,7 @@ func (u *User) GetStartCh() chan model.StartCh {
 }
 
 // InitiateOutgoingCall запускает исходящий звонок у указанного Telegram-бота.
-func (u *User) InitiateOutgoingCall(ctx context.Context, userID uint32, target string) (*Call, error) {
+func (u *User) InitiateOutgoingCall(ctx context.Context, userID uint64, target string) (*Call, error) {
 	bot, ok := u.getBot(userID)
 	if !ok {
 		return nil, fmt.Errorf("bot not found for userID %d", userID)
@@ -267,7 +267,7 @@ func (u *User) InitiateOutgoingCall(ctx context.Context, userID uint32, target s
 }
 
 // SubscribeCallEvents exposes realtime events for the RPC streaming endpoint.
-func (u *User) SubscribeCallEvents(ctx context.Context, userID uint32, callID string, after uint64) (<-chan CallEvent, error) {
+func (u *User) SubscribeCallEvents(ctx context.Context, userID uint64, callID string, after uint64) (<-chan CallEvent, error) {
 	bot, ok := u.getBot(userID)
 	if !ok {
 		return nil, fmt.Errorf("bot not found for userID %d", userID)
@@ -287,7 +287,7 @@ func (u *User) SubscribeCallEvents(ctx context.Context, userID uint32, callID st
 	return cs.eventHub.subscribe(ctx, after)
 }
 
-func (u *User) HangupCall(userID uint32, callID string) error {
+func (u *User) HangupCall(userID uint64, callID string) error {
 	bot, ok := u.getBot(userID)
 	if !ok {
 		return fmt.Errorf("bot not found for userID %d", userID)
@@ -311,7 +311,7 @@ func (b *Bot) setContactInfo(senderID int64, info *ContactInfo) {
 }
 
 // getBot получает бота по userID
-func (u *User) getBot(userID uint32) (*Bot, bool) {
+func (u *User) getBot(userID uint64) (*Bot, bool) {
 	value, ok := u.bot.Load(userID)
 	if !ok {
 		return nil, false
@@ -321,19 +321,19 @@ func (u *User) getBot(userID uint32) (*Bot, bool) {
 }
 
 // setBot сохраняет бота по userID
-func (u *User) setBot(userID uint32, bot *Bot) {
+func (u *User) setBot(userID uint64, bot *Bot) {
 	u.bot.Store(userID, bot)
 }
 
 // deleteBot удаляет бота по userID
-func (u *User) deleteBot(userID uint32) {
+func (u *User) deleteBot(userID uint64) {
 	u.bot.Delete(userID)
 }
 
 // rangeBot выполняет функцию для каждого бота
-func (u *User) rangeBot(f func(userID uint32, bot *Bot) bool) {
+func (u *User) rangeBot(f func(userID uint64, bot *Bot) bool) {
 	u.bot.Range(func(key, value any) bool {
-		userID, ok := key.(uint32)
+		userID, ok := key.(uint64)
 		if !ok {
 			return true
 		}
@@ -346,12 +346,12 @@ func (u *User) rangeBot(f func(userID uint32, bot *Bot) bool) {
 }
 
 // DisableOperatorMode отключает режим оператора для указанного диалога
-func (u *User) DisableOperatorMode(userID uint32, dialogID uint64, silent ...bool) error {
+func (u *User) DisableOperatorMode(userID uint64, dialogID uint64, silent ...bool) error {
 	var targetBot *Bot
 	var found bool
 
 	// Ищем бот, управляющий этим диалогом
-	u.rangeBot(func(uid uint32, bot *Bot) bool {
+	u.rangeBot(func(uid uint64, bot *Bot) bool {
 		// Проверяем, есть ли этот диалог в режиме оператора
 		if _, ok := bot.operatorModeByDialog.Load(dialogID); ok {
 			targetBot = bot
@@ -493,9 +493,9 @@ func (u *User) StopBots() {
 	var wg sync.WaitGroup
 
 	go func() {
-		u.rangeBot(func(userId uint32, bot *Bot) bool {
+		u.rangeBot(func(userId uint64, bot *Bot) bool {
 			wg.Add(1)
-			go func(id uint32) {
+			go func(id uint64) {
 				defer wg.Done()
 				if err := u.StopUserBot(id); err != nil {
 					logger.Warn("Ошибка при остановке бота: %v", err, id)
@@ -527,7 +527,7 @@ func (u *User) StopBots() {
 }
 
 // StopUserBot останавливает бота для конкретного пользователя и удаляет его из карты
-func (u *User) StopUserBot(userId uint32) error {
+func (u *User) StopUserBot(userId uint64) error {
 	bot, exists := u.getBot(userId)
 	if !exists {
 		metrics.ObserveBotLifecycle(userId, "stop", "not_found")
@@ -573,7 +573,7 @@ func (u *User) StopUserBot(userId uint32) error {
 
 // loadAndStartBot загружает конфиг бота из БД, проверяет подписку, создаёт и регистрирует бота.
 // Вызывающий код отвечает за предварительную остановку существующего бота.
-func (u *User) loadAndStartBot(userId uint32) error {
+func (u *User) loadAndStartBot(userId uint64) error {
 	startedAt := time.Now()
 	userData, err := u.db.GetTgUserBotUser(u.ctx, userId)
 	if err != nil {
@@ -607,7 +607,7 @@ func (u *User) loadAndStartBot(userId uint32) error {
 }
 
 // RestartUserBot перезапускает бота для конкретного пользователя с перезагрузкой всех параметров из БД.
-func (u *User) RestartUserBot(userId uint32) error {
+func (u *User) RestartUserBot(userId uint64) error {
 	logger.Info("Telegram: получена команда на перезапуск бота...", userId)
 	metrics.ObserveBotLifecycle(userId, "restart", "started")
 
@@ -627,7 +627,7 @@ func (u *User) RestartUserBot(userId uint32) error {
 }
 
 // StartUserBot запускает бота для конкретного пользователя.
-func (u *User) StartUserBot(userId uint32) error {
+func (u *User) StartUserBot(userId uint64) error {
 	logger.Info("Telegram: получена команда на запуск бота...", userId)
 	metrics.ObserveBotLifecycle(userId, "start", "started")
 
@@ -699,7 +699,7 @@ func (u *User) StartBots() error {
 }
 
 // Проверяет подписку пользователя
-func (u *User) checkUserSubscription(userID uint32) error {
+func (u *User) checkUserSubscription(userID uint64) error {
 	err := com.CheckUserSubscription(u.db, userID)
 	if err != nil {
 		var commonErr *com.SubscriptionError
@@ -757,7 +757,7 @@ func (u *User) createAssistantModel(user domain.TgUserBotData) *model.Assistant 
 }
 
 // Создает нового бота или обновляет существующего
-func (u *User) createOrUpdateBot(userID uint32, tokenData TgUserBotToken, assist *model.Assistant) (*Bot, error) {
+func (u *User) createOrUpdateBot(userID uint64, tokenData TgUserBotToken, assist *model.Assistant) (*Bot, error) {
 	// Проверяем, существует ли уже такой бот
 	existingBot, exists := u.getBot(userID)
 
@@ -772,7 +772,7 @@ func (u *User) createOrUpdateBot(userID uint32, tokenData TgUserBotToken, assist
 }
 
 // Инициализирует нового бота с заданными параметрами
-func (u *User) initializeBot(userID uint32, tokenData TgUserBotToken, assist *model.Assistant) (*Bot, error) {
+func (u *User) initializeBot(userID uint64, tokenData TgUserBotToken, assist *model.Assistant) (*Bot, error) {
 	// Инициализируем NTGCallsEngine один раз при создании первого бота
 	if u.ntgEngine == nil {
 		if err := u.ensureNTGEngine(); err != nil {
@@ -924,7 +924,7 @@ func (u *User) initializeBot(userID uint32, tokenData TgUserBotToken, assist *mo
 }
 
 // GetBotUsername возвращает информацию об имени запущенного бота
-func (u *User) GetBotUsername(userId uint32) string {
+func (u *User) GetBotUsername(userId uint64) string {
 	bot, ok := u.getBot(userId)
 	if !ok {
 		return ""
@@ -1298,7 +1298,7 @@ func (u *User) handleMissingAccessHash(respId int64) {
 
 	// Находим бот по respId и останавливаем его
 	found := false
-	u.rangeBot(func(dbUserId uint32, botInstance *Bot) bool {
+	u.rangeBot(func(dbUserId uint64, botInstance *Bot) bool {
 		if _, ok := botInstance.knownUsers.Load(respId); ok {
 			logger.Debug("Найден бот для TelegramID %d, выполняем остановку", respId)
 			if err := u.StopUserBot(dbUserId); err != nil {
