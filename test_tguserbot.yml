@@ -1,7 +1,7 @@
 services:
   # ── Нагрузочный тест air_tguserbot ────────────────────────────────────────────
   tguserbot_loadtest:
-    image: golang:1.25
+    image: golang:1.26
     container_name: tguserbot_loadtest
     working_dir: /workspace
     environment:
