@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/ebitengine/purego v0.11.3
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/gotd/td v0.163.0
 	github.com/ikermy/air-common/v2 v2.0.4
